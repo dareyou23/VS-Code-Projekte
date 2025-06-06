@@ -1,0 +1,18 @@
+# Ignoriere Betriebssystem-Dateien
+.DS_Store
+Thumbs.db
+
+# Ignoriere VS Code spezifische Einstellungen
+.vscode/
+
+# Ignoriere Python Cache-Dateien (falls du mal Skripte nutzt)
+__pycache__/
+*.pyc
+
+# Ignoriere von AWS CLI oder SDK generierte Cache-Dateien
+.aws/
+*.pem
+
+# Ignoriere von `aws cloudformation package` erstellte Templates
+packaged-template.yaml
+packaged.yaml

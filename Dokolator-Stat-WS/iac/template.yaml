@@ -1,0 +1,106 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for S3 static website in eu-central-1 with
+  CloudFront (HTTPS via default cert) and OAC. S3 Bucket is NOT publicly
+  accessible directly.
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: The name of the S3 bucket. Must be globally unique.
+    Default: dokolator-by-traudich # Dein gewählter Bucket-Name
+
+Resources:
+  # 1. S3 Bucket
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+
+  # 2. CloudFront Origin Access Control (OAC)
+  CloudFrontOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub OACForS3-${BucketName}
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # 3. S3 Bucket Policy
+  S3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3Bucket
+      PolicyDocument:
+        Statement:
+          - Sid: AllowCloudFrontServicePrincipalReadOnly
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub arn:aws:s3:::${S3Bucket}/*
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}
+
+  # 4. CloudFront Distribution
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Comment: !Sub CloudFront distribution for S3 bucket ${BucketName}
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt S3Bucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt CloudFrontOAC.Id
+            S3OriginConfig:
+              OriginAccessIdentity: '' # Muss leer sein, wenn OAC verwendet wird
+        Enabled: true
+        HttpVersion: http2and3
+        DefaultRootObject: index.html
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+          DefaultTTL: 86400
+          MinTTL: 0
+          MaxTTL: 31536000
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+      # --- KORREKTE PLATZIERUNG DES TAGS-BLOCKS ---
+      # Auf derselben Ebene wie DistributionConfig, nicht darin.
+      Tags:
+        - Key: Name
+          Value: !Sub CF-Distribution-S3-${BucketName}
+
+Outputs:
+  BucketNameOutput:
+    Value: !Ref S3Bucket
+    Description: Name of the S3 bucket created
+  CloudFrontDistributionId:
+    Value: !Ref CloudFrontDistribution
+    Description: ID of the CloudFront Distribution
+  CloudFrontDistributionDomainName:
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Description: Domain Name of the CloudFront Distribution (e.g.,
+      d111111abcdef8.cloudfront.net)
+  YourWebsiteURL:
+    Value: !Sub https://${CloudFrontDistribution.DomainName}
+    Description: Your website URL via CloudFront HTTPS

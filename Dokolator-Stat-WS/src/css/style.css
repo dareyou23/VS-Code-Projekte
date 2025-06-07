@@ -140,3 +140,94 @@ button.edit-btn:hover { background-color: #e0a800; }
 }
 #errorMessage { color: red; margin-top: 15px; font-weight: bold; display: none; }
 /* .negative-score { color: red; } */ /* Nicht mehr benötigt für Abrechnung, da Beträge positiv angezeigt werden */
+
+
+/* =============================================== */
+/* == RESPONSIVE DESIGN FÜR MOBILE GERÄTE == */
+/* =============================================== */
+
+/* Diese Regeln gelten nur für Bildschirme, die 768px breit oder schmaler sind (Tablets & Handys) */
+@media (max-width: 768px) {
+
+    /* Weniger seitlicher Abstand auf kleinen Bildschirmen */
+    body {
+        margin: 10px;
+    }
+    .container {
+        padding: 15px;
+        box-shadow: none; /* Schatten auf Handys oft nicht nötig */
+    }
+
+    /* Das ist die wichtigste Regel:
+       Die Spielerspalten werden jetzt nicht mehr nebeneinander, sondern
+       untereinander angezeigt, um horizontales Scrollen zu vermeiden. */
+    .player-role-row {
+        flex-direction: column; /* Ändert die Richtung von horizontal auf vertikal */
+        gap: 25px; /* Fügt Abstand zwischen den gestapelten Spieler-Blöcken hinzu */
+    }
+
+    /* Die Trennlinie zwischen den Spielern ist im vertikalen Layout nicht mehr sinnvoll */
+    .player-column {
+        border-right: none;
+        padding-right: 0;
+        border-bottom: 1px solid #eee; /* Stattdessen eine Trennlinie unten */
+        padding-bottom: 15px;
+    }
+    .player-column:last-child {
+        border-bottom: none; /* Der letzte Spieler braucht keine Trennlinie mehr unten */
+    }
+    
+    /* *** NEUE REGEL HINZUGEFÜGT *** */
+    /* Eingabefelder für Namen auf Mobilgeräten vergrößern */
+    .player-column input[type="text"] {
+        font-size: 16px; /* Größere Schrift, verhindert auch Auto-Zoom auf iOS */
+        padding: 14px;   /* Mehr Innenabstand, macht das Feld höher */
+    }
+    
+    /* Die Rollen-Buttons nebeneinander anordnen */
+    .role-radio-group {
+        display: flex;          /* Macht die Gruppe zur flexiblen Box */
+        flex-wrap: wrap;        /* Erlaubt den Zeilenumbruch, falls der Platz nicht reicht */
+        gap: 15px;              /* Schafft einen schönen Abstand zwischen den Buttons */
+        justify-content: flex-start; /* Buttons starten links */
+        border-top: none;       /* Die Trennlinie über den Buttons sieht hier nicht mehr gut aus */
+        padding-top: 5px;
+    }
+
+    .role-radio-group h4 {
+        width: 100%;            /* Sorgt dafür, dass die Überschrift "Rolle:" in einer eigenen Zeile steht */
+        margin-bottom: 5px;     /* Kleiner Abstand zur Button-Reihe */
+    }
+
+    .role-radio-group .radio-option {
+        margin-bottom: 0;       /* Den alten Abstand entfernen, da wir jetzt 'gap' nutzen */
+    }
+
+    /* Die vielen kleinen Radio-Buttons für den Spielwert brauchen mehr Platz */
+    .game-value-radios {
+        gap: 10px;
+        justify-content: center; /* Zentriert die Buttons, wenn sie umbrechen */
+    }
+
+    /* Das Datum oben rechts anders positionieren, damit es nicht überlappt */
+    #currentDate {
+        position: static; /* Entfernt die absolute Positionierung */
+        text-align: center; /* Zentriert den Text */
+        margin-bottom: 20px;
+        font-size: 1em;
+    }
+
+    /* Überschriften etwas kleiner machen */
+    h1 {
+        font-size: 1.8em;
+    }
+    h2 {
+        font-size: 1.4em;
+    }
+
+    /* Damit die Tabellen nicht den ganzen Bildschirm sprengen,
+       machen wir sie innerhalb ihres Bereichs horizontal scrollbar. */
+    .output-section, .abrechnung-section {
+        overflow-x: auto;
+    }
+}

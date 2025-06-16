@@ -147,7 +147,6 @@
             background-color: #ffebee !important;
         }
         #errorMessage { color: red; margin-top: 15px; font-weight: bold; display: none; }
-        /* .negative-score { color: red; } */ /* Nicht mehr benötigt für Abrechnung, da Beträge positiv angezeigt werden */
     </style>
 </head>
 <body>
@@ -280,7 +279,7 @@
         let editingGameIndex = -1;
         let myScoreChart = null;
 
-        const DOKO_STORAGE_KEY = 'doppelkopfAuswertungSession_vFinalCompletePlus_v5';
+        const DOKO_STORAGE_KEY = 'doppelkopfAuswertungSession_vFinalCompletePlus_v7'; // GEÄNDERT: Neuer Key wegen Datenstrukturänderung
 
         const roleDisplayNames = {
             re: 'R', kontra: 'K', hochzeit: 'H', solo: 'S', geber: 'G'
@@ -291,6 +290,30 @@
             const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
             currentDateDiv.textContent = now.toLocaleDateString('de-DE', options);
         }
+        
+        function manageGeberRoleInputs() {
+            const playerCount = parseInt(document.querySelector('input[name="playerCount"]:checked').value);
+            const geberRadio = document.querySelector('input[name="geberSelector"]:checked');
+            const geberIndex = geberRadio ? parseInt(geberRadio.value) : -1;
+
+            for (let i = 0; i < 5; i++) {
+                const gameRoleGroup = document.getElementById(`gameRoleGroup${i + 1}`);
+                if (gameRoleGroup) {
+                    const radios = gameRoleGroup.querySelectorAll('input[type="radio"]');
+                    let shouldBeDisabled = (playerCount === 5 && i === geberIndex);
+                    
+                    radios.forEach(radio => {
+                        radio.disabled = shouldBeDisabled;
+                    });
+
+                    // GEÄNDERT: Logik zum Zurücksetzen der Rollen anstatt "Keine" auszuwählen
+                    if (shouldBeDisabled) {
+                        radios.forEach(r => r.checked = false);
+                    }
+                }
+            }
+        }
+
 
         function createPlayerColumns(count, playerNamesFromGameToEdit = null) {
             const existingPlayerNamesMap = new Map();
@@ -317,20 +340,28 @@
                     fieldPlayerName = playerNamesFromGameToEdit[i].name || '';
                 } else {
                      fieldPlayerName = existingPlayerNamesMap.get(`player${i + 1}`) ||
-                                       (i < currentPlayerNamesOrder.length ? currentPlayerNamesOrder[i] : '') ||
-                                       '';
+                                     (i < currentPlayerNamesOrder.length ? currentPlayerNamesOrder[i] : '') ||
+                                     '';
                 }
                 newPlayerNamesForCurrentOrder.push(fieldPlayerName);
 
-
                 const playerColumn = document.createElement('div');
                 playerColumn.classList.add('player-column');
+                
+                // GEÄNDERT: "Keine/Kontra" Radio-Button entfernt
                 playerColumn.innerHTML = `
                     <label for="player${i + 1}">Spieler ${i + 1}:</label>
                     <input type="text" id="player${i + 1}" name="player${i + 1}" value="${fieldPlayerName}" ${i < Math.min(count, 4) ? 'required' : ''}>
+                    
                     <div class="role-radio-group">
-                        <h4>Rolle:</h4>
-                        <div class="radio-option"><input type="radio" id="role${i + 1}-geber" name="rolePlayer${i + 1}" value="geber"><label for="role${i + 1}-geber">Geber</label></div>
+                        <div class="radio-option">
+                            <input type="radio" id="geberPlayer${i + 1}" name="geberSelector" value="${i}">
+                            <label for="geberPlayer${i + 1}">Ist Geber</label>
+                        </div>
+                    </div>
+
+                    <div class="role-radio-group" id="gameRoleGroup${i + 1}">
+                        <h4>Rolle im Spiel:</h4>
                         <div class="radio-option"><input type="radio" id="role${i + 1}-re" name="rolePlayer${i + 1}" value="re"><label for="role${i + 1}-re">Re</label></div>
                         <div class="radio-option"><input type="radio" id="role${i + 1}-hochzeit" name="rolePlayer${i + 1}" value="hochzeit"><label for="role${i + 1}-hochzeit">Hochzeit</label></div>
                         <div class="radio-option"><input type="radio" id="role${i + 1}-solo" name="rolePlayer${i + 1}" value="solo"><label for="role${i + 1}-solo">Solo</label></div>
@@ -342,23 +373,22 @@
                  currentPlayerNamesOrder = newPlayerNamesForCurrentOrder.slice(0, count);
             }
 
+            document.querySelectorAll('input[name="geberSelector"]').forEach(radio => {
+                radio.addEventListener('change', (event) => {
+                    if (event.target.checked) {
+                        const newDealerIndex = parseInt(event.target.value);
+                        if (currentDealerIndex !== newDealerIndex) {
+                            currentDealerIndex = newDealerIndex;
+                        }
+                        manageGeberRoleInputs();
+                        validateRoles();
+                    }
+                });
+            });
+
 
             playerRoleRow.querySelectorAll('input[type="radio"][name^="rolePlayer"]').forEach(radio => {
-                radio.addEventListener('change', (event) => {
-                    const currentRadio = event.target;
-                    if (currentRadio.value === 'geber' && currentRadio.checked) {
-                        playerRoleRow.querySelectorAll('input[type="radio"][value="geber"]').forEach(otherGeberRadio => {
-                            if (otherGeberRadio !== currentRadio) otherGeberRadio.checked = false;
-                        });
-                        for (let k = 0; k < count; k++) {
-                            if (document.getElementById(`role${k + 1}-geber`) === currentRadio) {
-                                currentDealerIndex = k;
-                                break;
-                            }
-                        }
-                    }
-                    validateRoles();
-                });
+                radio.addEventListener('change', validateRoles);
             });
 
             playerRoleRow.querySelectorAll('input[type="text"][name^="player"]').forEach((input, index) => {
@@ -397,13 +427,9 @@
                         updateOutputTableHeader();
                         validateRoles();
 
-                        const geberRadioChecked = document.querySelector('input[name^="rolePlayer"][value="geber"]:checked');
+                        const geberRadioChecked = document.querySelector('input[name="geberSelector"]:checked');
                         if (geberRadioChecked) {
-                            const radioName = geberRadioChecked.name;
-                            const fieldNumber = parseInt(radioName.replace('rolePlayer', ''), 10);
-                            if (!isNaN(fieldNumber)) {
-                                currentDealerIndex = fieldNumber - 1;
-                            }
+                            currentDealerIndex = parseInt(geberRadioChecked.value);
                         } else {
                             currentDealerIndex = -1;
                         }
@@ -426,6 +452,7 @@
                 setNextDealerAutomatically();
             }
             updateOutputTableHeader();
+            manageGeberRoleInputs();
         }
 
         function updateOutputTableHeader() {
@@ -475,7 +502,7 @@
                 }
             }
 
-            playerRoleRow.querySelectorAll('input[type="radio"][value="geber"]').forEach(radio => radio.checked = false);
+            document.querySelectorAll('input[name="geberSelector"]').forEach(radio => radio.checked = false);
 
             if (activePlayerNamesInDOM.length === 0) {
                 currentDealerIndex = -1;
@@ -507,62 +534,66 @@
                 const playerInput = document.getElementById(`player${i + 1}`);
                 if (playerInput && playerInput.value.trim() === nextDealerName) {
                     currentDealerIndex = i;
-                    const dealerRadio = document.getElementById(`role${i + 1}-geber`);
+                    const dealerRadio = document.getElementById(`geberPlayer${i + 1}`);
                     if (dealerRadio) dealerRadio.checked = true;
                     break;
                 }
             }
+            manageGeberRoleInputs();
             validateRoles();
         }
 
         function validateRoles() {
             errorMessageDiv.style.display = 'none'; errorMessageDiv.textContent = '';
-            const selectedPlayerCount = document.querySelector('input[name="playerCount"]:checked').value;
-            const numPlayers = parseInt(selectedPlayerCount);
-            const rolesAssigned = { geber: [], re: [], hochzeit: [], solo: [] };
-            let geberPlayerNameFromRadio = null;
+            const numPlayers = parseInt(document.querySelector('input[name="playerCount"]:checked').value);
+            const isFivePlayers = numPlayers === 5;
+            
+            const rolesAssigned = { re: [], hochzeit: [], solo: [] };
+            let geberPlayerName = null;
             let namedPlayerInputsInDom = [];
+            
+            const geberRadio = document.querySelector('input[name="geberSelector"]:checked');
+            const geberIndex = geberRadio ? parseInt(geberRadio.value) : -1;
 
             for (let i = 1; i <= numPlayers; i++) {
                 const playerNameInput = document.getElementById(`player${i}`);
                 const playerName = playerNameInput ? playerNameInput.value.trim() : '';
                 if (playerName) namedPlayerInputsInDom.push(playerName);
 
-                const selectedRoleRadio = document.querySelector(`input[name="rolePlayer${i}"]:checked`);
-
                 if (i <= Math.min(numPlayers, 4) && playerName === '') {
                     errorMessageDiv.textContent = `Spieler ${i} benötigt einen Namen.`; errorMessageDiv.style.display = 'block'; return false;
                 }
-                if (selectedRoleRadio) {
-                    const roleValue = selectedRoleRadio.value;
-                    if (playerName) {
-                        if (['re', 'hochzeit', 'solo'].includes(roleValue)) rolesAssigned[roleValue].push(playerName);
-                        if (roleValue === 'geber') {
-                            rolesAssigned.geber.push(playerName);
+                
+                if (i - 1 === geberIndex) {
+                    geberPlayerName = playerName;
+                }
+
+                if (isFivePlayers && i - 1 === geberIndex) {
+                    // Geber setzt aus, keine Spielrolle
+                } else {
+                     const selectedRoleRadio = document.querySelector(`input[name="rolePlayer${i}"]:checked`);
+                     if(selectedRoleRadio){
+                        const roleValue = selectedRoleRadio.value;
+                        if(playerName){
+                             if (rolesAssigned.hasOwnProperty(roleValue)) {
+                                rolesAssigned[roleValue].push(playerName);
+                             }
                         }
-                    } else if (roleValue === 'geber' && selectedRoleRadio.checked) {
-                        errorMessageDiv.textContent = `Der als Geber ausgewählte Spieler (Spieler ${i}) muss einen Namen haben.`; errorMessageDiv.style.display = 'block'; return false;
-                    }
+                     }
                 }
             }
-
+            
             if (namedPlayerInputsInDom.length < Math.min(numPlayers, 4) && numPlayers >=4 ) {
                 errorMessageDiv.textContent = `Es müssen mindestens ${Math.min(numPlayers, 4)} Spieler einen Namen haben.`; errorMessageDiv.style.display = 'block'; return false;
             }
 
-            const actualNamedGeber = rolesAssigned.geber.filter(g => g && g.trim());
-            if (namedPlayerInputsInDom.length > 0 && actualNamedGeber.length === 0) {
-                 errorMessageDiv.textContent = 'Es muss ein Spieler als "Geber" ausgewählt sein und einen Namen haben.'; errorMessageDiv.style.display = 'block'; return false;
+            if (namedPlayerInputsInDom.length > 0 && geberIndex === -1) {
+                errorMessageDiv.textContent = 'Es muss ein Spieler als "Geber" ausgewählt sein.'; errorMessageDiv.style.display = 'block'; return false;
             }
-            if (actualNamedGeber.length > 1) {
-                errorMessageDiv.textContent = 'Es darf nur ein Spieler als "Geber" ausgewählt sein.'; errorMessageDiv.style.display = 'block'; return false;
+             if (geberIndex !== -1 && !geberPlayerName) {
+                errorMessageDiv.textContent = `Der als Geber ausgewählte Spieler (Spieler ${geberIndex + 1}) muss einen Namen haben.`; errorMessageDiv.style.display = 'block'; return false;
             }
-            if(actualNamedGeber.length === 1) geberPlayerNameFromRadio = actualNamedGeber[0];
-
-
-            const currentGeber = geberPlayerNameFromRadio;
-            const isFivePlayers = numPlayers === 5;
-
+            
             let determinedGameType = 'normal';
             const validSoloPlayers = rolesAssigned.solo.filter(s => s && s.trim());
             const validRePlayers = rolesAssigned.re.filter(r => r && r.trim());
@@ -570,8 +601,9 @@
 
             if (validSoloPlayers.length > 0) determinedGameType = 'solo';
             else if (validHochzeitPlayers.length > 0) determinedGameType = 'hochzeit';
+            
+            const activePlayerNamesForValidation = namedPlayerInputsInDom.filter(name => !(isFivePlayers && name === geberPlayerName));
 
-            const activePlayerNamesForValidation = namedPlayerInputsInDom.filter(name => !(isFivePlayers && name === currentGeber));
             if (activePlayerNamesForValidation.length < 4 && numPlayers >= 4 && namedPlayerInputsInDom.length >=4 ) {
                 errorMessageDiv.textContent = `Mind. 4 aktive Spieler benötigt (aktuell ${activePlayerNamesForValidation.length}). Geber bei 5 Spielern setzt aus.`; errorMessageDiv.style.display = 'block'; return false;
             }
@@ -631,15 +663,19 @@
         }
 
         function addGameRowToTable(gameDisplayNum, gameAllGamesDataIndex, displayedGameValueText, bockDisplayTextForCell,
-                                  allPlayerNamesInHeaderOrder, rosterForThisRow,
-                                  cumulativeScoresSnapshot, gameDetails) {
+                                   allPlayerNamesInHeaderOrder, rosterForThisRow,
+                                   cumulativeScoresSnapshot, gameDetails) {
             let newRow = outputTableBody.insertRow();
             newRow.dataset.allGamesDataIndex = gameAllGamesDataIndex;
-            newRow.dataset.displayData = JSON.stringify({
+            
+            const editData = {
+                ...gameDetails,
                 rosterForThisRow,
-                cumulativeTotalScores: { ...cumulativeScoresSnapshot },
-                ...gameDetails
-            });
+                cumulativeTotalScores: { ...cumulativeScoresSnapshot }
+            };
+            delete editData.activePlayersInThisRow; 
+            newRow.dataset.displayData = JSON.stringify(editData);
+
 
             if (gameDetails.triggeredBock) {
                 newRow.classList.add('bock-trigger-round');
@@ -655,30 +691,46 @@
                 const currentCumulativeScoreToShow = cumulativeScoresSnapshot[playerName] || 0;
                 let cell = newRow.insertCell(); let roleChar = '-'; let classToAdd = '';
                 const playerInfo = rosterForThisRow.find(p => p.name === playerName);
+                
+                const isActive = gameDetails.activePlayersInThisRow.includes(playerName);
 
-                if (playerInfo) {
-                    const isActive = gameDetails.activePlayersInThisRow.includes(playerName);
-                    if (gameDetails.isFivePlayerGame && playerName === gameDetails.geberName && !isActive) {
-                        roleChar = roleDisplayNames.geber; classToAdd = 'out-of-round';
-                    } else if (isActive) {
-                        roleChar = roleDisplayNames[playerInfo.roleForDisplay] || '?';
-                        if ((gameDetails.type === 'solo' && playerName === gameDetails.soloSpieler) ||
-                            (gameDetails.type.startsWith('hochzeit') && gameDetails.soloSpieler && playerName === gameDetails.soloSpieler) ||
-                            (gameDetails.type === 'hochzeit_phase1' && playerName === gameDetails.soloSpieler) ) {
-                            classToAdd = 'solo-player';
-                        } else if (((gameDetails.type === 'normal' || gameDetails.type === 'hochzeit_mit_partner') &&
-                                    gameDetails.rePartei && gameDetails.rePartei.includes(playerName))) {
-                            classToAdd = 're-partei';
-                        } else {
-                            classToAdd = 'kontra-partei';
-                        }
-                    } else {
-                        roleChar = '⌀'; classToAdd = 'out-of-round';
+                if (playerName === gameDetails.geberName) {
+                    roleChar = roleDisplayNames.geber;
+                    if (!isActive) { // Aussetzender Geber bei 5 Spielern
+                        classToAdd = 'out-of-round';
                     }
-                } else if (gameDetails.isFivePlayerGame && playerName === gameDetails.geberName && !gameDetails.activePlayersInThisRow.includes(playerName)) {
-                    roleChar = roleDisplayNames.geber; classToAdd = 'out-of-round';
-                } else if (!gameDetails.activePlayersInThisRow.includes(playerName) && allPlayerNamesInHeaderOrder.includes(playerName)) {
-                     roleChar = '⌀'; classToAdd = 'out-of-round';
+                }
+
+                if (isActive) {
+                    const gameRole = playerInfo ? playerInfo.roleForDisplay : null;
+                    let roleDisplay = (playerName === gameDetails.geberName) ? `${roleDisplayNames.geber}/` : '';
+
+                    if (gameRole && roleDisplayNames[gameRole]) {
+                        roleDisplay += roleDisplayNames[gameRole];
+                    } else if (gameRole) { // Fallback für unbekannte Rolle
+                        roleDisplay += '?';
+                    } else if (playerName !== gameDetails.geberName) { // Implizit Kontra, wenn nicht Geber
+                         roleDisplay = roleDisplayNames.kontra;
+                    } else if (playerName === gameDetails.geberName && roleDisplay.endsWith('/')) {
+                        // Wenn Geber und keine explizite Rolle, dann ist er Kontra
+                        roleDisplay += roleDisplayNames.kontra;
+                    }
+                    
+                    roleChar = roleDisplay;
+
+                    if ((gameDetails.type === 'solo' && playerName === gameDetails.soloSpieler) ||
+                        (gameDetails.type.startsWith('hochzeit') && gameDetails.soloSpieler && playerName === gameDetails.soloSpieler) ||
+                        (gameDetails.type === 'hochzeit_phase1' && playerName === gameDetails.soloSpieler) ) {
+                        classToAdd = 'solo-player';
+                    } else if (((gameDetails.type === 'normal' || gameDetails.type === 'hochzeit_mit_partner') &&
+                                gameDetails.rePartei && gameDetails.rePartei.includes(playerName))) {
+                        classToAdd = 're-partei';
+                    } else {
+                        classToAdd = 'kontra-partei';
+                    }
+                } else if (!gameDetails.activePlayersInThisRow.includes(playerName)) {
+                    if (!classToAdd) classToAdd = 'out-of-round';
+                    if (roleChar === '-') roleChar = '⌀';
                 }
 
 
@@ -686,7 +738,6 @@
                 if (cumulativeScoresSnapshot[playerName] === undefined) {
                     cell.innerHTML = `${roleChar} <span>0</span>`;
                 } else {
-                    // Beachte: .negative-score hier bezieht sich auf den kumulativen Spielstand, nicht auf den Zahlbetrag in der Abrechnung
                     cell.innerHTML = `${roleChar} <span class="${currentCumulativeScoreToShow < 0 ? 'negative-score' : ''}">${scoreDisp}</span>`;
                 }
                 if (classToAdd) cell.classList.add(classToAdd);
@@ -703,10 +754,10 @@
             const numPlayersCurrent = parseInt(document.querySelector('input[name="playerCount"]:checked').value);
 
             for (let i = 1; i <= 5; i++) {
+                // GEÄNDERT: Rollen-Reset durch De-Selektion aller Buttons
                 const roleRadios = document.querySelectorAll(`input[name="rolePlayer${i}"]`);
-                roleRadios.forEach(radio => {
-                    if (radio.value !== 'geber') radio.checked = false;
-                });
+                roleRadios.forEach(radio => radio.checked = false);
+
                 if (!keepPlayerNames) {
                     const nameInput = document.getElementById(`player${i}`);
                     if (nameInput) nameInput.value = '';
@@ -728,11 +779,21 @@
 
         function gatherInputsFromForm() {
             const selCount = parseInt(document.querySelector('input[name="playerCount"]:checked').value);
+            
+            const geberRadio = document.querySelector('input[name="geberSelector"]:checked');
+            const geberIndex = geberRadio ? parseInt(geberRadio.value, 10) : -1;
+            const geberName = geberIndex !== -1 ? (document.getElementById(`player${geberIndex + 1}`)?.value.trim() || null) : null;
+            
             const playersData = [];
-            for (let i = 1; i <= selCount; i++) {
-                const nameIn = document.getElementById(`player${i}`);
-                const roleRad = document.querySelector(`input[name="rolePlayer${i}"]:checked`);
-                playersData.push({ name: nameIn ? nameIn.value.trim() : '', selectedRole: roleRad ? roleRad.value : null });
+            for (let i = 0; i < selCount; i++) {
+                const nameIn = document.getElementById(`player${i + 1}`);
+                const playerName = nameIn ? nameIn.value.trim() : '';
+                
+                // GEÄNDERT: Vereinfachte Rollen-Erfassung. `null`, wenn nichts ausgewählt ist.
+                const roleRad = document.querySelector(`input[name="rolePlayer${i + 1}"]:checked`);
+                const role = roleRad ? roleRad.value : null;
+
+                playersData.push({ name: playerName, selectedRole: role });
             }
 
             let valIn = null; const selValRad = document.querySelector('input[name="gameValueRadio"]:checked');
@@ -744,9 +805,13 @@
             }
             const numVal = parseInt(valIn);
             if (isNaN(numVal)) { errorMessageDiv.textContent = 'Ungültiger Spielwert.'; errorMessageDiv.style.display = 'block'; return null; }
+            
             return {
                 id: editingGameIndex !== -1 ? allGamesData[editingGameIndex].id : Date.now() + Math.random(),
-                playerCount: selCount, players: playersData, gameValue: numVal,
+                playerCount: selCount,
+                players: playersData,
+                geberName: geberName,
+                gameValue: numVal,
                 triggerNewBockRound: document.getElementById('triggerNewBockRound').checked
             };
         }
@@ -805,6 +870,9 @@
                         allPlayerNamesInSession.add(playerInput.name.trim());
                     }
                 });
+                 if (gameEntry.inputs.geberName) {
+                    allPlayerNamesInSession.add(gameEntry.inputs.geberName);
+                }
             });
 
             allPlayerNamesInSession.forEach(name => {
@@ -817,7 +885,7 @@
             const outputTableHeadCells = outputTable.querySelectorAll('thead tr th');
             for (let k = 3; k < outputTableHeadCells.length - 1; k++) {
                  if(outputTableHeadCells[k] && outputTableHeadCells[k].textContent) {
-                    plyNamesHead.push(outputTableHeadCells[k].textContent);
+                     plyNamesHead.push(outputTableHeadCells[k].textContent);
                  }
             }
             allPlayerNamesInSession.forEach(sessionPlayerName => {
@@ -835,22 +903,24 @@
             for (let i = 0; i < allGamesData.length; i++) {
                 const gameEntry = allGamesData[i]; const inputs = gameEntry.inputs; const gameDispNum = i + 1;
                 const gamePlyCount = inputs.playerCount; const is5Ply = gamePlyCount === 5;
-                const roles = { geber: null, re: [], h: null, solo: null }; const plyNamesConfThisGame = [];
+                
+                const roles = { re: [], h: null, solo: null };
+                const plyNamesConfThisGame = [];
+                const geberForRound = inputs.geberName;
 
                 inputs.players.forEach(pIn => {
                     if (pIn.name && pIn.name.trim()) {
                         plyNamesConfThisGame.push(pIn.name.trim());
+                         if (pIn.selectedRole === 're') roles.re.push(pIn.name.trim());
+                        else if (pIn.selectedRole === 'hochzeit') roles.h = pIn.name.trim();
+                        else if (pIn.selectedRole === 'solo') roles.solo = pIn.name.trim();
                     }
-                    if (pIn.selectedRole === 're') roles.re.push(pIn.name.trim());
-                    else if (pIn.selectedRole === 'hochzeit') roles.h = pIn.name.trim();
-                    else if (pIn.selectedRole === 'solo') roles.solo = pIn.name.trim();
-                    else if (pIn.selectedRole === 'geber') roles.geber = pIn.name.trim();
                 });
-
-                const activePlyInThisGame = plyNamesConfThisGame.filter(name => !(is5Ply && name === roles.geber));
+                
+                const activePlyInThisGame = plyNamesConfThisGame.filter(name => !(is5Ply && name === geberForRound));
                 activePlyInThisGame.forEach(ap => { if (currentCumulativeScores[ap] === undefined) currentCumulativeScores[ap] = 0; });
-                if (is5Ply && roles.geber && currentCumulativeScores[roles.geber] === undefined) {
-                    currentCumulativeScores[roles.geber] = 0;
+                if (is5Ply && geberForRound && currentCumulativeScores[geberForRound] === undefined) {
+                    currentCumulativeScores[geberForRound] = 0;
                 }
 
                 let gType = 'normal'; if (roles.solo && roles.solo.trim()) gType = 'solo'; else if (roles.h && roles.h.trim()) gType = 'hochzeit';
@@ -892,13 +962,13 @@
                     activePlyInThisGame.forEach(p => currentCumulativeScores[p] = (currentCumulativeScores[p] || 0) + (scP1[p] || 0));
                     const scoresSnapshotAfterPhase1 = { ...currentCumulativeScores };
                     addChartDataPointLocal(" (H1)");
+                    
                     let rostP1 = activePlyInThisGame.map(pn => ({ name: pn, roleForDisplay: (pn === hPly) ? 'hochzeit' : 'kontra' }));
-                    if (is5Ply && roles.geber && !activePlyInThisGame.includes(roles.geber)) rostP1.push({ name: roles.geber, roleForDisplay: 'geber' });
                     addGameRowToTable(gameDispNum, i, `${effP1} (H Suche)`, bockDisp, plyNamesHead, rostP1, scoresSnapshotAfterPhase1,
-                        { type: 'hochzeit_phase1', soloSpieler: hPly, geberName: roles.geber, isFivePlayerGame: is5Ply, activePlayersInThisRow: activePlyInThisGame, rePartei: null, triggeredBock: inputs.triggerNewBockRound });
+                        { type: 'hochzeit_phase1', soloSpieler: hPly, geberName: geberForRound, isFivePlayerGame: is5Ply, activePlayersInThisRow: activePlyInThisGame, rePartei: null, triggeredBock: inputs.triggerNewBockRound });
 
                     const effP2 = origVal * (isBockRoundCurrentGame ? 2 : 1); let scP2 = {}; let rostP2Act = [];
-                    let detP2 = { geberName: roles.geber, isFivePlayerGame: is5Ply, activePlayersInThisRow: activePlyInThisGame, triggeredBock: inputs.triggerNewBockRound };
+                    let detP2 = { geberName: geberForRound, isFivePlayerGame: is5Ply, activePlayersInThisRow: activePlyInThisGame, triggeredBock: inputs.triggerNewBockRound };
                     if (hPart) {
                         scP2 = calculateReKontraScores([hPly, hPart], activePlyInThisGame, effP2); detP2.type = 'hochzeit_mit_partner'; detP2.rePartei = [hPly, hPart];
                         rostP2Act = activePlyInThisGame.map(pn => ({ name: pn, roleForDisplay: (pn === hPly) ? 'hochzeit' : (pn === hPart ? 're' : 'kontra') }));
@@ -909,11 +979,10 @@
                     activePlyInThisGame.forEach(p => currentCumulativeScores[p] = (currentCumulativeScores[p] || 0) + (scP2[p] || 0));
                     const scoresSnapshotAfterPhase2 = { ...currentCumulativeScores };
                     addChartDataPointLocal(" (H2)");
-                    let fullRostP2 = [...rostP2Act]; if (is5Ply && roles.geber && !activePlyInThisGame.includes(roles.geber)) fullRostP2.push({ name: roles.geber, roleForDisplay: 'geber' });
-                    addGameRowToTable(gameDispNum, i, `${effP2} (H ${hPart ? 'm.P.' : 'Solo'})`, bockDisp, plyNamesHead, fullRostP2, scoresSnapshotAfterPhase2, detP2);
+                    addGameRowToTable(gameDispNum, i, `${effP2} (H ${hPart ? 'm.P.' : 'Solo'})`, bockDisp, plyNamesHead, rostP2Act, scoresSnapshotAfterPhase2, detP2);
                 } else {
                     let rScores = {}; const effVal = origVal * (isBockRoundCurrentGame ? 2 : 1);
-                    let dets = { geberName: roles.geber, isFivePlayerGame: is5Ply, activePlayersInThisRow: activePlyInThisGame, triggeredBock: inputs.triggerNewBockRound };
+                    let dets = { geberName: geberForRound, isFivePlayerGame: is5Ply, activePlayersInThisRow: activePlyInThisGame, triggeredBock: inputs.triggerNewBockRound };
                     let rostAct = [];
                     if (gType === 'solo') {
                         rScores = calculateSoloScores(roles.solo, activePlyInThisGame, effVal); dets.type = 'solo'; dets.soloSpieler = roles.solo;
@@ -925,8 +994,7 @@
                     activePlyInThisGame.forEach(p => currentCumulativeScores[p] = (currentCumulativeScores[p] || 0) + (rScores[p] || 0));
                     const scoresSnapshotAfterRound = { ...currentCumulativeScores };
                     addChartDataPointLocal();
-                    let fullRost = [...rostAct]; if (is5Ply && roles.geber && !activePlyInThisGame.includes(roles.geber)) fullRost.push({ name: roles.geber, roleForDisplay: 'geber' });
-                    addGameRowToTable(gameDispNum, i, effVal.toString(), bockDisp, plyNamesHead, fullRost, scoresSnapshotAfterRound, dets);
+                    addGameRowToTable(gameDispNum, i, effVal.toString(), bockDisp, plyNamesHead, rostAct, scoresSnapshotAfterRound, dets);
                 }
 
                 if (isBockRoundCurrentGame) {
@@ -950,9 +1018,9 @@
                     tempBockPlayedInStreak = 0; tempBockTotalInStreak = 0;
                 }
                  gameEntry.stateAfterProcessing = {
-                    cumulativeTotalScores: { ...currentCumulativeScores },
-                    bockState: { active: tempBockActive, playedInStreak: tempBockPlayedInStreak, totalInStreak: tempBockTotalInStreak }
-                };
+                     cumulativeTotalScores: { ...currentCumulativeScores },
+                     bockState: { active: tempBockActive, playedInStreak: tempBockPlayedInStreak, totalInStreak: tempBockTotalInStreak }
+                 };
             }
 
             if (allGamesData.length > 0) {
@@ -969,11 +1037,11 @@
                 bockRoundsActive = 0; bockGamesPlayedInCurrentStreak = 0; totalBockGamesInCurrentStreak = 0;
             }
 
-             if (outputTableBody.rows.length > 0) {
-                outputSection.style.display = 'block';
-             } else {
-                outputSection.style.display = 'none';
-            }
+               if (outputTableBody.rows.length > 0) {
+                 outputSection.style.display = 'block';
+               } else {
+                 outputSection.style.display = 'none';
+               }
 
             displayAbrechnung();
             updateScoreChart(chartLabels, chartPlayerScoresData);
@@ -986,20 +1054,39 @@
 
             const pCountRad = document.getElementById(`players${gameToEdit.playerCount}`);
             if (pCountRad) pCountRad.checked = true;
-
-            const playerNamesForEditForm = gameToEdit.players.map(p => ({name: p.name, selectedRole: p.selectedRole}));
+            
+            const playerNamesForEditForm = gameToEdit.players.map(p => ({name: p.name}));
             createPlayerColumns(gameToEdit.playerCount, playerNamesForEditForm);
 
+            let geberIndexInForm = -1;
+            if (gameToEdit.geberName) {
+                for (let i = 0; i < gameToEdit.playerCount; i++) {
+                    const nameField = document.getElementById(`player${i + 1}`);
+                    if (nameField && nameField.value.trim() === gameToEdit.geberName) {
+                        geberIndexInForm = i;
+                        break;
+                    }
+                }
+                if (geberIndexInForm !== -1) {
+                    const geberRadioToSelect = document.getElementById(`geberPlayer${geberIndexInForm + 1}`);
+                    if (geberRadioToSelect) {
+                        geberRadioToSelect.checked = true;
+                        currentDealerIndex = geberIndexInForm;
+                    }
+                }
+            }
+            
             gameToEdit.players.forEach((pData, playerArrIndex) => {
                 const domPlayerIndex = playerArrIndex + 1;
-                document.querySelectorAll(`input[name="rolePlayer${domPlayerIndex}"]`).forEach(r => r.checked = false);
+                // GEÄNDERT: Rollen-Buttons setzen ohne "none"
                 if (pData.selectedRole) {
                     const roleRadSel = document.getElementById(`role${domPlayerIndex}-${pData.selectedRole}`);
                     if (roleRadSel) roleRadSel.checked = true;
+                } else {
+                    document.querySelectorAll(`input[name="rolePlayer${domPlayerIndex}"]`).forEach(r => r.checked = false);
                 }
             });
-             currentPlayerNamesOrder = gameToEdit.players.map(p => p.name.trim()).slice(0, gameToEdit.playerCount);
-
+            currentPlayerNamesOrder = gameToEdit.players.map(p => p.name ? p.name.trim() : "").slice(0, gameToEdit.playerCount);
 
             gameValueRadios.forEach(r => r.checked = false);
             customGameValueInput.value = '';
@@ -1010,25 +1097,11 @@
 
             document.getElementById('triggerNewBockRound').checked = gameToEdit.triggerNewBockRound;
 
-            const geberData = gameToEdit.players.find(p => p.selectedRole === 'geber');
-            currentDealerIndex = -1;
-            if (geberData && geberData.name) {
-                for(let i=0; i < gameToEdit.playerCount; i++){
-                    const nameField = document.getElementById(`player${i+1}`);
-                    if(nameField && nameField.value.trim() === geberData.name){
-                        currentDealerIndex = i;
-                        const geberRadioToSelect = document.getElementById(`role${i + 1}-geber`);
-                        if(geberRadioToSelect) geberRadioToSelect.checked = true; else console.warn("Geber Radio nicht gefunden für", `role${i + 1}-geber`);
-                        break;
-                    }
-                }
-            }
-
-
             submitGameButton.textContent = 'Änderungen speichern';
             submitGameButton.style.backgroundColor = '#ffc107';
             document.querySelector('.input-section').scrollIntoView({ behavior: "smooth" });
             updateOutputTableHeader();
+            manageGeberRoleInputs();
             validateRoles();
         }
 
@@ -1088,7 +1161,7 @@
                 if (allGamesData.length > 0) {
                     setNextDealerBasedOnLastGame();
                 } else if (currentDealerIndex !== -1 && currentDealerIndex < currentPlayerNamesOrder.length && currentPlayerNamesOrder[currentDealerIndex]) {
-                    const geberRadioToSelect = document.getElementById(`role${currentDealerIndex + 1}-geber`);
+                    const geberRadioToSelect = document.getElementById(`geberPlayer${currentDealerIndex + 1}`);
                     if(geberRadioToSelect && document.getElementById(`player${currentDealerIndex+1}`).value === currentPlayerNamesOrder[currentDealerIndex]) {
                          geberRadioToSelect.checked = true;
                     } else {
@@ -1098,6 +1171,7 @@
                     setNextDealerAutomatically();
                 }
 
+                manageGeberRoleInputs();
 
             } else {
                 const initPlyCount = parseInt(document.querySelector('input[name="playerCount"]:checked').value);
@@ -1119,9 +1193,9 @@
         function setNextDealerBasedOnLastGame() {
             if (allGamesData.length > 0 && allGamesData[allGamesData.length - 1].inputs) {
                 const lastInputs = allGamesData[allGamesData.length - 1].inputs;
-                const lastDealerData = lastInputs.players.find(p => p.selectedRole === 'geber');
-                if (lastDealerData && lastDealerData.name) {
-                    setNextDealerAutomatically(lastDealerData.name);
+                const lastDealerName = lastInputs.geberName;
+                if (lastDealerName) {
+                    setNextDealerAutomatically(lastDealerName);
                 } else {
                     setNextDealerAutomatically();
                 }
@@ -1135,7 +1209,7 @@
                         if(inputField && inputField.value.trim() === dealerNameFromOrder){
                             nameInDom = true;
                             currentDealerIndex = i;
-                            const dealerRadio = document.getElementById(`role${currentDealerIndex + 1}-geber`);
+                            const dealerRadio = document.getElementById(`geberPlayer${currentDealerIndex + 1}`);
                             if (dealerRadio) dealerRadio.checked = true;
                             break;
                         }
@@ -1162,13 +1236,13 @@
                 activePlyNamesForAbrechnung = Object.keys(totalScores).filter(name => totalScores[name] !== undefined && name.trim() !== "");
             }
 
-            if(activePlyNamesForAbrechnung.length === 0) { // Fallback, wenn totalScores noch leer ist
+            if(activePlyNamesForAbrechnung.length === 0) {
                 const numPlyInForm = parseInt(document.querySelector('input[name="playerCount"]:checked').value);
                  for (let i=0; i < numPlyInForm; i++) {
-                    const playerInput = document.getElementById(`player${i+1}`);
-                    if (playerInput && playerInput.value.trim()) {
-                        activePlyNamesForAbrechnung.push(playerInput.value.trim());
-                    }
+                     const playerInput = document.getElementById(`player${i+1}`);
+                     if (playerInput && playerInput.value.trim()) {
+                         activePlyNamesForAbrechnung.push(playerInput.value.trim());
+                     }
                  }
             }
             activePlyNamesForAbrechnung = activePlyNamesForAbrechnung.filter(name => name && name.trim() !== "");
@@ -1218,17 +1292,16 @@
             activePlyNamesForAbrechnung.forEach(n => {
                 const c = zuZahlRw.insertCell();
                 const curScr = totalScores[n] !== undefined ? totalScores[n] : 0;
-                let betrag = 0; // Intern wird der zu zahlende Betrag als negativer Wert für die Logik berechnet
+                let betrag = 0;
 
                 if (curScr === maxScr) {
-                    betrag = -startgeld; // Zahlt Startgeld
+                    betrag = -startgeld;
                 } else {
-                    betrag = -(((maxScr - curScr) * punktwertVal) + startgeld); // Zahlt Startgeld + Differenz
+                    betrag = -(((maxScr - curScr) * punktwertVal) + startgeld);
                 }
 
-                c.textContent = Math.abs(betrag).toFixed(2) + " €"; // Anzeige als positiver Wert
+                c.textContent = Math.abs(betrag).toFixed(2) + " €";
                 c.style.textAlign = 'right';
-                // Klasse "negative-score" wird hier nicht mehr gesetzt, da der Wert positiv angezeigt wird.
             });
             abrechnungOutputDiv.style.display = 'block';
         }
@@ -1241,19 +1314,19 @@
             const datasets = [];
 
             let activePlyForChart = [];
-             if(Object.keys(chartPlayerScoresData).length > 0 && Object.keys(chartPlayerScoresData).some(key => chartPlayerScoresData[key] && chartPlayerScoresData[key].length > 0)){
-                 activePlyForChart = Object.keys(chartPlayerScoresData).filter(key => chartPlayerScoresData[key] && chartPlayerScoresData[key].length > 0 && key.trim() !== "");
-             } else if (Object.keys(totalScores).length > 0){
-                 activePlyForChart = Object.keys(totalScores).filter(name => totalScores[name] !== undefined && name.trim() !== "");
-             } else {
+               if(Object.keys(chartPlayerScoresData).length > 0 && Object.keys(chartPlayerScoresData).some(key => chartPlayerScoresData[key] && chartPlayerScoresData[key].length > 0)){
+                    activePlyForChart = Object.keys(chartPlayerScoresData).filter(key => chartPlayerScoresData[key] && chartPlayerScoresData[key].length > 0 && key.trim() !== "");
+               } else if (Object.keys(totalScores).length > 0){
+                    activePlyForChart = Object.keys(totalScores).filter(name => totalScores[name] !== undefined && name.trim() !== "");
+               } else {
                 const numPlySel = parseInt(document.querySelector('input[name="playerCount"]:checked').value);
                  for (let i = 0; i < numPlySel; i++) {
-                    const playerInput = document.getElementById(`player${i + 1}`);
-                    if (playerInput && playerInput.value.trim()) {
-                        activePlyForChart.push(playerInput.value.trim());
-                    }
+                     const playerInput = document.getElementById(`player${i + 1}`);
+                     if (playerInput && playerInput.value.trim()) {
+                         activePlyForChart.push(playerInput.value.trim());
+                     }
                  }
-            }
+               }
             activePlyForChart = activePlyForChart.filter(name => name && name.trim() !== "");
 
 
@@ -1269,7 +1342,7 @@
             });
 
             let hasMeaningfulData = false;
-            if (datasets.some(ds => ds.data && ds.data.length > 0)) { // Zeige Chart, wenn überhaupt Daten vorhanden sind
+            if (datasets.some(ds => ds.data && ds.data.length > 0)) {
                 hasMeaningfulData = true;
             }
 
@@ -1295,7 +1368,7 @@
                                 autoSkip: true,
                                 maxRotation: 45,
                                 minRotation: 0,
-                                maxTicksLimit: 20 // Hier kann experimentiert werden (z.B. 15, 25)
+                                maxTicksLimit: 20
                             }
                         },
                         y: {
@@ -1312,6 +1385,10 @@
                 const newCount = parseInt(event.target.value);
                 const currentNamesInFields = [];
                 const currentRoles = [];
+                const geberRadio = document.querySelector('input[name="geberSelector"]:checked');
+                const oldGeberIndex = geberRadio ? parseInt(geberRadio.value) : -1;
+                const oldGeberName = oldGeberIndex !== -1 ? document.getElementById(`player${oldGeberIndex+1}`).value.trim() : null;
+
 
                 const oldPlayerColumns = playerRoleRow.querySelectorAll('.player-column');
                 oldPlayerColumns.forEach((col, idx) => {
@@ -1330,6 +1407,21 @@
                 createPlayerColumns(newCount);
 
                 let geberNeuGesetzt = false;
+                if(oldGeberName){
+                    for(let i=0; i < newCount; i++){
+                        const newNameInput = document.getElementById(`player${i+1}`);
+                        if(newNameInput && newNameInput.value.trim() === oldGeberName){
+                            const newGeberRadio = document.getElementById(`geberPlayer${i+1}`);
+                            if(newGeberRadio){
+                                newGeberRadio.checked = true;
+                                currentDealerIndex = i;
+                                geberNeuGesetzt = true;
+                            }
+                            break;
+                        }
+                    }
+                }
+                
                 currentRoles.forEach(roleInfo => {
                     if (roleInfo && roleInfo.playerIndex < newCount) {
                         const alterNameAnPosition = currentNamesInFields[roleInfo.playerIndex];
@@ -1338,11 +1430,7 @@
                         if (alterNameAnPosition && neuerNameAnPositionImForm === alterNameAnPosition) {
                              const roleRadioToSelect = document.getElementById(`role${roleInfo.playerIndex + 1}-${roleInfo.role}`);
                              if (roleRadioToSelect) {
-                                 roleRadioToSelect.checked = true;
-                                 if(roleInfo.role === 'geber') {
-                                     currentDealerIndex = roleInfo.playerIndex;
-                                     geberNeuGesetzt = true;
-                                 }
+                                  roleRadioToSelect.checked = true;
                              }
                         }
                     }
@@ -1351,7 +1439,8 @@
                 if(!geberNeuGesetzt){
                     setNextDealerAutomatically();
                 } else {
-                     validateRoles();
+                    manageGeberRoleInputs();
+                    validateRoles();
                 }
 
 
@@ -1361,8 +1450,8 @@
                     for(let i=0; i < newCount; i++){
                         const input = document.getElementById(`player${i+1}`);
                         if(input && input.value.trim()){
-                             namesInNewForm.push(input.value.trim());
-                             totalScores[input.value.trim()] = 0;
+                            namesInNewForm.push(input.value.trim());
+                            totalScores[input.value.trim()] = 0;
                         }
                     }
                     displayAbrechnung();

@@ -1,0 +1,23 @@
+{
+  "name": "dokolator-stat-ws",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dareyou23/VS-Code-Projekte.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dareyou23/VS-Code-Projekte/issues"
+  },
+  "homepage": "https://github.com/dareyou23/VS-Code-Projekte#readme",
+  "devDependencies": {
+    "vitest": "^1.6.0"
+  }
+}

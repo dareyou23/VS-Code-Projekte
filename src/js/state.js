@@ -1,5 +1,3 @@
-// src/js/state.js
-
 // --- Private Modul-Variablen (State) ---
 let allGamesData = [];
 let totalScores = {};

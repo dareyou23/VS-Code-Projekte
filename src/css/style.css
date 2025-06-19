@@ -153,6 +153,22 @@ button.edit-btn:hover { background-color: #e0a800; }
         font-size: 1.4em;
     }
 
+    #newGameDayButton {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .player-column input[type="text"], 
+    .game-value-input input[type="number"], 
+    .abrechnung-section input[type="number"] {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .game-value-radios {
+        gap: 10px;
+    }
+
     .player-role-row {
         flex-direction: column;
         align-items: stretch;
@@ -175,4 +191,214 @@ button.edit-btn:hover { background-color: #e0a800; }
         text-align: center;
         margin-bottom: 15px;
     }
+}
+
+/* --- NEUE UI-Elemente für Drag-and-Drop --- */
+
+.new-input-container {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    margin-top: 20px;
+    padding: 20px;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.new-input-container h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #333;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+}
+
+.new-input-container h3 small {
+    font-weight: normal;
+    color: #777;
+    font-size: 0.8em;
+}
+
+/* 1. Rollen-Pool */
+.role-pool {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    align-items: center;
+    min-height: 60px;
+    background-color: #e9ecef;
+    padding: 15px;
+    border-radius: 5px;
+}
+
+.role-card {
+    padding: 10px 20px;
+    border-radius: 5px;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    font-weight: bold;
+    cursor: grab;
+    transition: all 0.2s ease-in-out;
+}
+
+.role-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* 2. Spieler-Kacheln (Drop-Zonen) */
+.player-dropzones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+}
+
+.player-name-input {
+    width: 100%;
+    border: none;
+    border-bottom: 1px solid #ccc;
+    padding: 8px 0;
+    text-align: center;
+    font-size: 1.1em;
+    font-weight: bold;
+    background: transparent;
+}
+.player-name-input:focus {
+    outline: none;
+    border-bottom-color: #007bff;
+}
+
+.role-slot {
+    width: 100%;
+    min-height: 45px; /* Höhe einer role-card */
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    border: 1px dashed #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #aaa;
+    font-style: italic;
+    font-size: 0.9em;
+}
+
+/* NEU: Stile für die Spieler-Statistiken in der Kachel */
+.player-stats {
+    width: 100%;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 0.95em;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.stat-item .label {
+    color: #555;
+    font-weight: bold;
+}
+
+.stat-item .value {
+    font-weight: bold;
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+.stat-item .value.positive {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.stat-item .value.negative {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+
+/* 3. Spiel-Steuerung */
+.game-controls {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+    background-color: #fff;
+    padding: 15px;
+    border-radius: 5px;
+}
+
+.control-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.control-item label {
+    font-weight: bold;
+    font-size: 1em;
+}
+
+.control-item select {
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    font-size: 1.1em;
+}
+
+/* Schöner Schiebeschalter (Toggle Switch) */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+}
+
+.toggle-switch-checkbox {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-switch-label {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.toggle-switch-label:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+.toggle-switch-checkbox:checked + .toggle-switch-label {
+    background-color: #28a745; /* Grün für "An" */
+}
+
+.toggle-switch-checkbox:checked + .toggle-switch-label:before {
+    transform: translateX(26px);
 }

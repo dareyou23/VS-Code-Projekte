@@ -1,19 +1,19 @@
-// src/js/main.js
-
 import * as state from './state.js';
 import * as ui from './ui.js';
 
 // --- Zentrale Update-Funktion ---
-// Diese Funktion wird immer aufgerufen, wenn sich Daten ändern und die UI neu gezeichnet werden muss.
 function refreshUI() {
     const processedData = state.processAllGames();
     const { headerNames, tableRows, finalScores, hasGames, appSettings } = processedData;
 
+    // Aktualisiert die herkömmliche Ausgabetabelle
     ui.updateOutputTableHeader(headerNames);
     ui.renderTable(tableRows, headerNames);
     ui.displayAbrechnung(finalScores, appSettings);
+
+    // NEU: Aktualisiert die Statistiken in den neuen Spieler-Kacheln
+    ui.updatePlayerTileStats(finalScores, appSettings);
     
-    // UI-Zustände anpassen
     ui.DOM.outputSection.style.display = hasGames ? 'block' : 'none';
 }
 
@@ -21,6 +21,10 @@ function refreshUI() {
 
 function handleFormSubmit(event) {
     event.preventDefault();
+    alert("Speichern noch nicht implementiert für die neue Oberfläche!");
+    return; // Temporär deaktiviert
+
+    // Die folgende Logik muss an die neue UI angepasst werden (nächste Schritte)
     const error = ui.validateRolesAndGetError();
     ui.displayError(error);
     if (error) return;
@@ -31,7 +35,6 @@ function handleFormSubmit(event) {
         return;
     }
     
-    // Player-Namen im State aktualisieren, bevor das Spiel gespeichert wird
     const namesFromForm = gameInputs.players.map(p => p.name);
     state.updateCurrentPlayerNamesOrder(namesFromForm);
 
@@ -39,11 +42,7 @@ function handleFormSubmit(event) {
     
     refreshUI();
     
-    const { playerCount } = state.getGameState().appSettings;
-    ui.resetForm(true, playerCount); // Namen behalten
-    state.setNextDealer(gameInputs.geberName); // Nächsten Geber basierend auf dem letzten Spiel setzen
-    const { currentDealerIndex } = state.getGameState();
-    ui.createPlayerColumns(playerCount, namesFromForm, currentDealerIndex); // Form neu zeichnen mit neuem Geber
+    // ... restliche Logik muss ebenfalls angepasst werden ...
     
     state.saveSession();
 }
@@ -51,32 +50,22 @@ function handleFormSubmit(event) {
 function handlePlayerCountChange(event) {
     const newCount = parseInt(event.target.value);
     state.updateSettings({ playerCount: newCount });
-    // Leere Namens-Arrays für die neue Spieleranzahl
-    const newPlayerNames = Array(newCount).fill('');
-    state.updateCurrentPlayerNamesOrder(newPlayerNames);
-    ui.createPlayerColumns(newCount, newPlayerNames, -1);
-    refreshUI(); // Header neu zeichnen
+    
+    const { currentPlayerNamesOrder } = state.getGameState();
+    // Erstellt die Kacheln neu, behält aber die Namen, wenn möglich
+    const namesForNewCount = Array.from({ length: newCount }, (_, i) => currentPlayerNamesOrder[i] || '');
+    state.updateCurrentPlayerNamesOrder(namesForNewCount);
+
+    ui.createPlayerTiles(newCount, namesForNewCount);
+    refreshUI();
 }
 
 function handlePlayerNameInput(event) {
     const index = parseInt(event.target.dataset.index);
-    const newName = event.target.value.trim();
+    const newName = event.target.value; // trim() erst bei Speicherung
     const { playerCount } = state.getGameState().appSettings;
     state.updatePlayerName(index, newName, playerCount);
-    refreshUI(); // Header live aktualisieren
-    // Kein Save hier, um nicht bei jedem Tastendruck zu speichern
-}
-
-function handleRoleOrGeberChange() {
-    ui.manageGeberRoleInputs();
-    const error = ui.validateRolesAndGetError();
-    ui.displayError(error);
-
-    // Den aktuell ausgewählten Geber im State speichern
-    const geberRadio = document.querySelector('input[name="geberSelector"]:checked');
-    if (geberRadio) {
-        state.setDealer(parseInt(geberRadio.value));
-    }
+    refreshUI();
 }
 
 function handleNewGameDay() {
@@ -103,6 +92,8 @@ function handleSettingsChange() {
     });
     const { finalScores, appSettings } = state.processAllGames();
     ui.displayAbrechnung(finalScores, appSettings);
+    // NEU: Auch die Kacheln bei Einstellungs-Änderung aktualisieren
+    refreshUI();
     state.saveSession();
 }
 
@@ -119,56 +110,43 @@ document.addEventListener('DOMContentLoaded', () => {
         radio.addEventListener('change', handlePlayerCountChange);
     });
 
-    // Event-Listener für dynamisch erstellte Elemente (Delegation)
-    ui.DOM.playerRoleRow.addEventListener('change', (event) => {
-        if (event.target.name.startsWith('rolePlayer') || event.target.name === 'geberSelector') {
-            handleRoleOrGeberChange();
-        }
-    });
-    ui.DOM.playerRoleRow.addEventListener('input', (event) => {
-        if (event.target.type === 'text' && event.target.name.startsWith('player')) {
+    // Event Delegation für die neuen, dynamischen Felder
+    ui.DOM.playerForm.addEventListener('input', (event) => {
+        if (event.target.classList.contains('player-name-input')) {
             handlePlayerNameInput(event);
         }
     });
-    ui.DOM.playerRoleRow.addEventListener('blur', (event) => {
-        if (event.target.type === 'text' && event.target.name.startsWith('player')) {
-            // Erst beim Verlassen des Feldes speichern
+     ui.DOM.playerForm.addEventListener('blur', (event) => {
+        if (event.target.classList.contains('player-name-input')) {
+            // Namen trimmen und speichern, wenn das Feld verlassen wird
+            event.target.value = event.target.value.trim();
+            handlePlayerNameInput(event); // Nochmal aufrufen mit getrimmtem Wert
             state.saveSession();
         }
-    });
+    }, true); // Use capture phase to ensure it runs before other blurs
 
-    // Listener für "Spiel bearbeiten"-Events
     document.addEventListener('editGame', handleEditGame);
 
-    // Listener für Abrechnungseinstellungen
     ui.DOM.startgeldInput.addEventListener('input', handleSettingsChange);
     ui.DOM.punktwertInput.addEventListener('input', handleSettingsChange);
 
 
     // Anwendung laden
     const sessionLoaded = state.loadSession();
-    const { appSettings, currentPlayerNamesOrder, currentDealerIndex } = state.getGameState();
+    let { appSettings, currentPlayerNamesOrder } = state.getGameState();
     
     // UI initialisieren
     document.getElementById(`players${appSettings.playerCount}`).checked = true;
     ui.updateSettingsInputs(appSettings);
-    ui.createPlayerColumns(appSettings.playerCount, currentPlayerNamesOrder, currentDealerIndex);
+    
+    // Stellt sicher, dass das Namensarray zur Spielerzahl passt
+    while(currentPlayerNamesOrder.length < appSettings.playerCount) currentPlayerNamesOrder.push('');
+    currentPlayerNamesOrder = currentPlayerNamesOrder.slice(0, appSettings.playerCount);
+    state.updateCurrentPlayerNamesOrder(currentPlayerNamesOrder);
+    
+    ui.createPlayerTiles(appSettings.playerCount, currentPlayerNamesOrder);
     
     if (sessionLoaded) {
         refreshUI();
-        if(state.getGameState().allGamesData.length > 0) {
-            const lastGame = state.getGameState().allGamesData.slice(-1)[0].inputs;
-            state.setNextDealer(lastGame.geberName);
-        } else {
-            state.setNextDealer();
-        }
-        const updatedState = state.getGameState();
-        ui.createPlayerColumns(updatedState.appSettings.playerCount, updatedState.currentPlayerNamesOrder, updatedState.currentDealerIndex);
-    } else {
-        // Frischer Start
-        state.setNextDealer();
-        const updatedState = state.getGameState();
-        ui.createPlayerColumns(updatedState.appSettings.playerCount, updatedState.currentPlayerNamesOrder, updatedState.currentDealerIndex);
     }
-    handleRoleOrGeberChange(); // Initial-Validierung durchführen
 });

@@ -1,18 +1,17 @@
-// src/js/ui.js
-
 import { roleDisplayNames } from './state.js';
 
 // --- DOM-Elemente sammeln und exportieren ---
 export const DOM = {
     playerCountRadios: document.querySelectorAll('input[name="playerCount"]'),
-    playerRoleRow: document.getElementById('playerRoleRow'),
+    // playerRoleRow: document.getElementById('playerRoleRow'), // Veraltet
+    playerDropzonesContainer: document.getElementById('player-dropzones'), // NEU
     playerForm: document.getElementById('playerForm'),
     outputSection: document.querySelector('.output-section'),
     outputTableBody: document.getElementById('outputTableBody'),
     outputTable: document.getElementById('outputTable'),
     errorMessageDiv: document.getElementById('errorMessage'),
-    gameValueRadios: document.querySelectorAll('input[name="gameValueRadio"]'),
-    customGameValueInput: document.getElementById('customGameValue'),
+    // gameValueRadios: document.querySelectorAll('input[name="gameValueRadio"]'), // Veraltet
+    // customGameValueInput: document.getElementById('customGameValue'), // Veraltet
     currentDateDiv: document.getElementById('currentDate'),
     submitGameButton: document.getElementById('submitGameButton'),
     newGameDayButton: document.getElementById('newGameDayButton'),
@@ -22,10 +21,8 @@ export const DOM = {
     abrechnungTable: document.getElementById('abrechnungTable'),
     chartSectionDiv: document.querySelector('.chart-section'),
     scoreChartCanvas: document.getElementById('scoreChart'),
-    triggerNewBockRoundCheckbox: document.getElementById('triggerNewBockRound')
+    // triggerNewBockRoundCheckbox: document.getElementById('triggerNewBockRound') // Veraltet
 };
-
-let myScoreChart = null; // Chart-Instanz lokal im UI-Modul halten
 
 // --- UI-Anzeigefunktionen ---
 
@@ -131,81 +128,85 @@ export function renderTable(tableRowsData, headerNames) {
 }
 
 
-export function createPlayerColumns(count, playerNames = [], dealerIndex = -1) {
-    DOM.playerRoleRow.innerHTML = '';
+/**
+ * NEU: Erstellt die Spieler-Kacheln basierend auf der Spieleranzahl und Namen.
+ * Ersetzt die alte createPlayerColumns Funktion.
+ */
+export function createPlayerTiles(count, playerNames = []) {
+    DOM.playerDropzonesContainer.innerHTML = '';
     for (let i = 0; i < count; i++) {
         const playerName = playerNames[i] || '';
-        const playerColumn = document.createElement('div');
-        playerColumn.classList.add('player-column');
-        
-        playerColumn.innerHTML = `
-            <label for="player${i + 1}">Spieler ${i + 1}:</label>
-            <input type="text" id="player${i + 1}" name="player${i + 1}" value="${playerName}" ${i < 4 ? 'required' : ''} data-index="${i}">
-            <div class="role-radio-group">
-                <div class="radio-option">
-                    <input type="radio" id="geberPlayer${i + 1}" name="geberSelector" value="${i}" ${i === dealerIndex ? 'checked' : ''}>
-                    <label for="geberPlayer${i + 1}">Ist Geber</label>
+        const tile = document.createElement('div');
+        tile.className = 'player-dropzone';
+        tile.dataset.playerId = i;
+
+        tile.innerHTML = `
+            <input type="text" class="player-name-input" placeholder="Spieler ${i + 1}" value="${playerName}" data-index="${i}">
+            <div class="role-slot"></div>
+            <div class="player-stats">
+                <div class="stat-item">
+                    <span class="label">Punkte:</span>
+                    <span class="value player-score" data-score-for-player="${i}">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="label">Zahlt:</span>
+                    <span class="value player-payment" data-payment-for-player="${i}">0,00 €</span>
                 </div>
             </div>
-            <div class="role-radio-group" id="gameRoleGroup${i + 1}">
-                <h4>Rolle im Spiel:</h4>
-                <div class="radio-option"><input type="radio" id="role${i + 1}-re" name="rolePlayer${i + 1}" value="re"><label for="role${i + 1}-re">Re</label></div>
-                <div class="radio-option"><input type="radio" id="role${i + 1}-hochzeit" name="rolePlayer${i + 1}" value="hochzeit"><label for="role${i + 1}-hochzeit">Hochzeit</label></div>
-                <div class="radio-option"><input type="radio" id="role${i + 1}-solo" name="rolePlayer${i + 1}" value="solo"><label for="role${i + 1}-solo">Solo</label></div>
-            </div>`;
-        DOM.playerRoleRow.appendChild(playerColumn);
+        `;
+        DOM.playerDropzonesContainer.appendChild(tile);
     }
-    manageGeberRoleInputs();
 }
 
-export function manageGeberRoleInputs() {
-    const playerCount = parseInt(document.querySelector('input[name="playerCount"]:checked').value);
-    const geberRadio = document.querySelector('input[name="geberSelector"]:checked');
-    const geberIndex = geberRadio ? parseInt(geberRadio.value) : -1;
+/**
+ * NEU: Aktualisiert die Statistiken (Punkte, Zahlbetrag) in den Spieler-Kacheln.
+ */
+export function updatePlayerTileStats(finalScores, settings) {
+    const startgeld = parseFloat(settings.startgeld) || 0;
+    const punktwertVal = parseFloat(settings.punktwert) || 0;
+    const nameInputs = Array.from(document.querySelectorAll('.player-name-input'));
+    const allPlayerNames = nameInputs.map(input => input.value);
+    
+    if (allPlayerNames.length === 0) return;
 
-    for (let i = 0; i < 5; i++) {
-        const gameRoleGroup = document.getElementById(`gameRoleGroup${i + 1}`);
-        if (gameRoleGroup) {
-            const radios = gameRoleGroup.querySelectorAll('input[type="radio"]');
-            let shouldBeDisabled = (playerCount === 5 && i === geberIndex);
-            radios.forEach(radio => { radio.disabled = shouldBeDisabled; });
-            if (shouldBeDisabled) radios.forEach(r => r.checked = false);
+    const scoresInCurrentOrder = allPlayerNames.map(name => finalScores[name] || 0);
+    const maxScore = scoresInCurrentOrder.length > 0 ? Math.max(...scoresInCurrentOrder) : 0;
+
+    allPlayerNames.forEach((name, index) => {
+        const score = finalScores[name] || 0;
+        
+        // Punkte aktualisieren
+        const scoreEl = document.querySelector(`[data-score-for-player="${index}"]`);
+        if(scoreEl) {
+            scoreEl.textContent = score;
+            scoreEl.classList.remove('positive', 'negative');
+            if (score > 0) {
+                scoreEl.classList.add('positive');
+            } else if (score < 0) {
+                scoreEl.classList.add('negative');
+            }
         }
-    }
+        
+        // Zahlbetrag berechnen und aktualisieren
+        const paymentEl = document.querySelector(`[data-payment-for-player="${index}"]`);
+        if(paymentEl) {
+            let amount = score === maxScore && scoresInCurrentOrder.filter(s => s === maxScore).length === 1 ? -startgeld : -(((maxScore - score) * punktwertVal) + startgeld);
+            paymentEl.textContent = `${Math.abs(amount).toFixed(2)} €`;
+        }
+    });
+}
+
+
+// --- Alte Funktionen (angepasst oder bald zu löschen) ---
+
+export function manageGeberRoleInputs() {
+    // Diese Funktion wird in der Drag-and-Drop Welt nicht mehr benötigt.
+    // Vorerst leer lassen.
 }
 
 export function validateRolesAndGetError() {
-    const numPlayers = parseInt(document.querySelector('input[name="playerCount"]:checked').value);
-    const isFivePlayerGame = numPlayers === 5;
-
-    const playerNames = [];
-    for (let i = 1; i <= numPlayers; i++) {
-        const nameInput = document.getElementById(`player${i}`);
-        if ((!nameInput || !nameInput.value.trim()) && i <= 4) return `Bitte gib für Spieler ${i} einen Namen ein.`;
-        playerNames.push(nameInput ? nameInput.value.trim() : "");
-    }
-
-    const geberRadio = document.querySelector('input[name="geberSelector"]:checked');
-    if (!geberRadio) return 'Bitte wähle einen Geber aus.';
-    const geberIndex = parseInt(geberRadio.value);
-
-    const activePlayers = isFivePlayerGame ? playerNames.filter((p, index) => index !== geberIndex) : [...playerNames];
-    const roles = { re: [], hochzeit: [], solo: [] };
-
-    playerNames.forEach((name, index) => {
-        if (isFivePlayerGame && index === geberIndex) return;
-        const roleRadio = document.querySelector(`input[name="rolePlayer${index + 1}"]:checked`);
-        if (roleRadio) roles[roleRadio.value]?.push(name);
-    });
-    
-    if (roles.solo.length > 1) return 'Es kann nur einen Solo-Spieler geben.';
-    if (roles.solo.length > 0 && (roles.re.length > 0 || roles.hochzeit.length > 0)) return 'Bei einem Solo dürfen keine Re- oder Hochzeits-Spieler ausgewählt sein.';
-    if (roles.hochzeit.length > 1) return 'Es kann nur einen Hochzeits-Spieler geben.';
-    if (roles.hochzeit.length > 0 && roles.re.length > 1) return 'Bei einer Hochzeit kann maximal ein Re-Partner direkt ausgewählt werden.';
-    if (roles.hochzeit.length > 0 && roles.re.length === 1 && roles.re[0] === roles.hochzeit[0]) return 'Der Hochzeits-Spieler kann nicht sein eigener Partner sein.';
-    if (roles.solo.length === 0 && roles.hochzeit.length === 0 && roles.re.length !== 2) return 'Für ein normales Spiel müssen genau 2 "Re"-Spieler ausgewählt sein.';
-
-    return null; // Kein Fehler
+    // Muss für Drag-and-Drop neu geschrieben werden.
+    return null; // Vorläufig keine Fehler
 }
 
 export function displayError(message) {
@@ -214,47 +215,15 @@ export function displayError(message) {
 }
 
 export function getFormInputs() {
-    const playerCount = parseInt(document.querySelector('input[name="playerCount"]:checked').value);
-    const geberRadio = document.querySelector('input[name="geberSelector"]:checked');
-    const geberIndex = geberRadio ? parseInt(geberRadio.value) : -1;
-    const geberName = geberIndex !== -1 ? document.getElementById(`player${geberIndex + 1}`)?.value.trim() : null;
-
-    const players = [];
-    for (let i = 0; i < playerCount; i++) {
-        const name = document.getElementById(`player${i + 1}`)?.value.trim() || '';
-        const role = document.querySelector(`input[name="rolePlayer${i + 1}"]:checked`)?.value || null;
-        players.push({ name, selectedRole: role });
-    }
-
-    let gameValue = document.querySelector('input[name="gameValueRadio"]:checked')?.value;
-    if (!gameValue && DOM.customGameValueInput.value.trim()) {
-        gameValue = DOM.customGameValueInput.value.trim();
-    }
-    if (gameValue === null || isNaN(parseInt(gameValue))) return null;
-
-    return {
-        playerCount,
-        players,
-        geberName,
-        gameValue: parseInt(gameValue),
-        triggerNewBockRound: DOM.triggerNewBockRoundCheckbox.checked
-    };
+    // Muss für Drag-and-Drop neu geschrieben werden.
+    // Gibt vorläufig Dummy-Daten zurück, um Fehler zu vermeiden.
+    console.warn("getFormInputs() ist veraltet und liefert keine Daten.");
+    return null; // Signalisiert, dass die Funktion noch nicht bereit ist.
 }
 
 
 export function resetForm(keepPlayerNames, playerCount) {
-    DOM.customGameValueInput.value = '';
-    DOM.gameValueRadios.forEach(radio => radio.checked = false);
-    DOM.triggerNewBockRoundCheckbox.checked = false;
-
-    for (let i = 1; i <= 5; i++) {
-        document.querySelectorAll(`input[name="rolePlayer${i}"]`).forEach(r => r.checked = false);
-        if (!keepPlayerNames) {
-            const nameInput = document.getElementById(`player${i}`);
-            if (nameInput) nameInput.value = '';
-        }
-    }
-    setSubmitButtonMode('new');
+    // Muss für Drag-and-Drop angepasst werden. (z.B. Karten zurück in den Pool)
 }
 
 export function setSubmitButtonMode(mode) { // mode can be 'new' or 'edit'
@@ -262,35 +231,14 @@ export function setSubmitButtonMode(mode) { // mode can be 'new' or 'edit'
         DOM.submitGameButton.textContent = 'Änderungen speichern';
         DOM.submitGameButton.style.backgroundColor = '#ffc107';
     } else {
-        DOM.submitGameButton.textContent = 'Spielrunde erfassen & Teams bilden';
+        DOM.submitGameButton.textContent = 'Spielrunde erfassen';
         DOM.submitGameButton.style.backgroundColor = '#007bff';
     }
 }
 
 export function populateFormForEdit(game, playerCount) {
-    document.getElementById(`players${playerCount}`).checked = true;
-    createPlayerColumns(playerCount, game.players.map(p => p.name));
-
-    const geberIndex = game.players.findIndex(p => p.name === game.geberName);
-    if (geberIndex !== -1) {
-        document.getElementById(`geberPlayer${geberIndex + 1}`).checked = true;
-    }
-
-    game.players.forEach((p, i) => {
-        if (p.selectedRole) {
-            const roleRadio = document.getElementById(`role${i + 1}-${p.selectedRole}`);
-            if (roleRadio) roleRadio.checked = true;
-        }
-    });
-
-    const gameValueRadio = document.querySelector(`input[name="gameValueRadio"][value="${game.gameValue}"]`);
-    if (gameValueRadio) gameValueRadio.checked = true;
-    else DOM.customGameValueInput.value = game.gameValue;
-    
-    DOM.triggerNewBockRoundCheckbox.checked = game.triggerNewBockRound;
-    setSubmitButtonMode('edit');
-    manageGeberRoleInputs();
-    document.querySelector('.input-section').scrollIntoView({ behavior: "smooth" });
+     // Muss für Drag-and-Drop neu geschrieben werden.
+    alert("Funktion 'Spiel bearbeiten' muss für die neue Oberfläche neu implementiert werden.");
 }
 
 export function displayAbrechnung(finalScores, settings) {

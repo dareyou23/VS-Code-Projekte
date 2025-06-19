@@ -23,47 +23,63 @@
                     <input type="radio" id="players5" name="playerCount" value="5" checked>
                     <label for="players5">5 Spieler</label>
                 </div>
-                <div class="players-and-roles-container">
-                    <label style="margin-bottom: 10px; display: block;">Spieler-Namen und Rollen zuweisen:</label>
-                    <div id="playerRoleRow" class="player-role-row"></div>
-                </div>
-                <div class="game-selection-group">
-                    <h3>Spielinformationen</h3>
-                    <div class="game-value-section">
-                        <h4>Spielwert:</h4>
-                        <div class="game-value-radios">
-                            <div class="radio-option"><input type="radio" id="value1" name="gameValueRadio" value="1"><label for="value1">1</label></div>
-                            <div class="radio-option"><input type="radio" id="value2" name="gameValueRadio" value="2"><label for="value2">2</label></div>
-                            <div class="radio-option"><input type="radio" id="value3" name="gameValueRadio" value="3"><label for="value3">3</label></div>
-                            <div class="radio-option"><input type="radio" id="value4" name="gameValueRadio" value="4"><label for="value4">4</label></div>
-                            <div class="radio-option"><input type="radio" id="value5" name="gameValueRadio" value="5"><label for="value5">5</label></div>
-                            <div class="radio-option"><input type="radio" id="value6" name="gameValueRadio" value="6"><label for="value6">6</label></div>
-                            <div class="radio-option"><input type="radio" id="value7" name="gameValueRadio" value="7"><label for="value7">7</label></div>
-                            <div class="radio-option"><input type="radio" id="value8" name="gameValueRadio" value="8"><label for="value8">8</label></div>
-                            <div class="radio-option"><input type="radio" id="value0" name="gameValueRadio" value="0"><label for="value0">0</label></div>
-                            <div class="radio-option"><input type="radio" id="valueNeg1" name="gameValueRadio" value="-1"><label for="valueNeg1">-1</label></div>
-                            <div class="radio-option"><input type="radio" id="valueNeg2" name="gameValueRadio" value="-2"><label for="valueNeg2">-2</label></div>
-                            <div class="radio-option"><input type="radio" id="valueNeg3" name="gameValueRadio" value="-3"><label for="valueNeg3">-3</label></div>
-                            <div class="radio-option"><input type="radio" id="valueNeg4" name="gameValueRadio" value="-4"><label for="valueNeg4">-4</label></div>
-                            <div class="radio-option"><input type="radio" id="valueNeg5" name="gameValueRadio" value="-5"><label for="valueNeg5">-5</label></div>
-                            <div class="radio-option"><input type="radio" id="valueNeg6" name="gameValueRadio" value="-6"><label for="valueNeg6">-6</label></div>
-                            <div class="radio-option"><input type="radio" id="valueNeg7" name="gameValueRadio" value="-7"><label for="valueNeg7">-7</label></div>
-                            <div class="radio-option"><input type="radio" id="valueNeg8" name="gameValueRadio" value="-8"><label for="valueNeg8">-8</label></div>
-                        </div>
-                        <div class="game-value-input">
-                            <label for="customGameValue">Oder eigener Wert:</label>
-                            <input type="number" id="customGameValue" name="customGameValue">
+
+                <div class="new-input-container">
+                    
+                    <div class="role-pool-wrapper">
+                        <h3>Rollen-Pool <small>(Rollen auf Spieler ziehen)</small></h3>
+                        <div id="role-pool" class="role-pool">
+                            <div class="role-card" data-role="re">Re</div>
+                            <div class="role-card" data-role="re">Re</div>
+                            <div class="role-card" data-role="hochzeit">Hochzeit</div>
+                            <div class="role-card" data-role="solo">Solo</div>
+                            <div class="role-card" data-role="geber">Geber</div>
                         </div>
                     </div>
-                    <div class="bock-trigger-section">
-                        <h4>Neue Bockrunde(n) auslösen?</h4>
-                        <div>
-                            <input type="checkbox" id="triggerNewBockRound" name="triggerNewBockRound">
-                            <label for="triggerNewBockRound">Ja, für dieses Spiel auslösen</label>
+
+                    <div class="player-dropzones-wrapper">
+                         <h3>Spieler <small>(Namen eintragen)</small></h3>
+                        <div id="player-dropzones" class="player-dropzones">
+                            </div>
+                    </div>
+
+                    <div class="game-controls-wrapper">
+                        <h3>Spiel-Details</h3>
+                        <div class="game-controls">
+                            <div class="control-item">
+                                <label for="gameValueSelect">Spielwert</label>
+                                <select id="gameValueSelect" name="gameValueSelect">
+                                    <option value="8">8</option>
+                                    <option value="7">7</option>
+                                    <option value="6">6</option>
+                                    <option value="5">5</option>
+                                    <option value="4">4</option>
+                                    <option value="3">3</option>
+                                    <option value="2">2</option>
+                                    <option value="1" selected>1</option>
+                                    <option value="0">0</option>
+                                    <option value="-1">-1</option>
+                                    <option value="-2">-2</option>
+                                    <option value="-3">-3</option>
+                                    <option value="-4">-4</option>
+                                    <option value="-5">-5</option>
+                                    <option value="-6">-6</option>
+                                    <option value="-7">-7</option>
+                                    <option value="-8">-8</option>
+                                </select>
+                            </div>
+                            <div class="control-item">
+                                <label for="bockTriggerSwitch">Bockrunde auslösen</label>
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="bockTriggerSwitch" class="toggle-switch-checkbox">
+                                    <label class="toggle-switch-label" for="bockTriggerSwitch"></label>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <button type="submit" id="submitGameButton">Spielrunde erfassen & Teams bilden</button>
+
+                <button type="submit" id="submitGameButton">Spielrunde erfassen</button>
                 <div id="errorMessage"></div>
             </form>
         </div>

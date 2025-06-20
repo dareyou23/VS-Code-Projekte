@@ -2,21 +2,20 @@ import * as state from './state.js';
 import * as ui from './ui.js';
 
 /**
- * Initialisiert die Drag-and-Drop-Funktionalität für die Rollenkarten.
+ * Initialisiert die Drag-and-Drop-Funktionalität.
  */
 function initializeDragAndDrop() {
     const rolePool = document.getElementById('role-pool');
-    const playerDropzones = document.querySelectorAll('.role-slot');
+    const playerDropzones = document.querySelectorAll('.player-dropzone');
 
-    if (rolePool) {
-        new Sortable(rolePool, {
-            group: 'doko-roles',
-            animation: 150,
-            ghostClass: 'sortable-ghost'
-        });
-    }
+    new Sortable(rolePool, {
+        group: 'doko-roles',
+        animation: 150,
+        ghostClass: 'sortable-ghost'
+    });
 
-    playerDropzones.forEach(zone => {
+    playerDropzones.forEach(tile => {
+        const zone = tile.querySelector('.role-slot');
         new Sortable(zone, {
             group: 'doko-roles',
             animation: 150,
@@ -26,7 +25,7 @@ function initializeDragAndDrop() {
 }
 
 /**
- * Liest die Eingabedaten aus der neuen Drag-and-Drop-Oberfläche aus.
+ * Liest die Eingabedaten aus der Drag-and-Drop-Oberfläche aus.
  */
 function getNewFormInputs() {
     const { playerCount } = state.getGameState().appSettings;
@@ -38,16 +37,15 @@ function getNewFormInputs() {
     for (const tile of playerTiles) {
         const nameInput = tile.querySelector('.player-name-input');
         const roleSlot = tile.querySelector('.role-slot');
-        const roleCard = roleSlot ? roleSlot.querySelector('.role-card') : null;
+        const roleCards = roleSlot ? roleSlot.querySelectorAll('.role-card') : [];
+        const rolesOnTile = Array.from(roleCards).map(card => card.dataset.role);
         
         const playerName = nameInput ? nameInput.value.trim() : '';
-        const playerRole = roleCard ? roleCard.dataset.role : null;
-        
         if (playerName) {
-            players.push({ name: playerName, selectedRole: playerRole });
+            players.push({ name: playerName, roles: rolesOnTile });
         }
 
-        if (playerRole === 'geber') {
+        if (rolesOnTile.includes('geber')) {
             geberName = playerName;
             geberCount++;
         }
@@ -66,6 +64,7 @@ function getNewFormInputs() {
     };
 }
 
+
 /**
  * Setzt die Eingabemaske für die nächste Runde zurück.
  */
@@ -75,10 +74,12 @@ function resetUIForNextRound() {
     const geberCard = document.querySelector('.role-card[data-role="geber"]');
 
     allPlayerSlots.forEach(slot => {
-        const card = slot.querySelector('.role-card');
-        if (card && card !== geberCard) {
-            rolePool.appendChild(card);
-        }
+        const cards = slot.querySelectorAll('.role-card');
+        cards.forEach(card => {
+             if (card !== geberCard) {
+                rolePool.appendChild(card);
+            }
+        });
     });
 
     const { currentDealerIndex } = state.getGameState();
@@ -102,7 +103,8 @@ function refreshUI() {
     ui.renderTable(tableRows, headerNames);
     ui.displayAbrechnung(finalScores, appSettings);
     ui.updatePlayerTileStats(finalScores, appSettings);
-    
+    ui.renderChart(tableRows, headerNames);
+
     if (ui.DOM.outputSection) {
         ui.DOM.outputSection.style.display = hasGames ? 'block' : 'none';
     }
@@ -117,13 +119,12 @@ function handleFormSubmit(event) {
     let gameInputs = getNewFormInputs();
     const { playerCount, players, geberName, geberCount } = gameInputs;
 
-    // --- Allgemeine Validierung ---
     if (players.length < playerCount) {
         alert(`Fehler: Bitte geben Sie Namen für alle ${playerCount} Spieler ein.`);
         return;
     }
-    const isSoloGame = players.some(p => p.selectedRole === 'solo');
-    const isHochzeitGame = players.some(p => p.selectedRole === 'hochzeit');
+    const isSoloGame = players.some(p => p.roles.includes('solo'));
+    const isHochzeitGame = players.some(p => p.roles.includes('hochzeit'));
 
     if (isSoloGame && isHochzeitGame) {
         alert("Fehler: Ein Solo und eine Hochzeit können nicht gleichzeitig gespielt werden.");
@@ -134,55 +135,53 @@ function handleFormSubmit(event) {
         return;
     }
 
-    // --- Typspezifische Validierung mit korrekter Logik-Struktur ---
     if (isSoloGame) {
-        if (players.some(p => p.selectedRole === 're')) {
+        if (players.some(p => p.roles.includes('re'))) {
             alert("Fehler: Bei einem Solo dürfen keine 'Re'-Karten verteilt werden.");
             return;
         }
     } else if (isHochzeitGame) {
-        // Keine Karten-Validierung nötig, da Re-Karten optional sind.
-    } else { // Es ist ein Normales Spiel
-        if (geberCount !== 1) {
-            alert("Fehler: Für ein normales Spiel muss ein Spieler die 'Geber'-Karte haben.");
-            return;
-        }
-        const reCount = players.filter(p => p.selectedRole === 're').length;
-        if (playerCount === 4) {
-            if (reCount < 1 || reCount > 2) {
-                alert("Fehler: Für ein normales 4-Spieler-Spiel, weisen Sie bitte eine oder zwei 'Re'-Karten zu.");
+        // Keine weitere Validierung
+    } else { // Normales Spiel
+        const reCount = players.filter(p => p.roles.includes('re')).length;
+        if (playerCount === 5) {
+            if (geberCount !== 1 || reCount !== 2) {
+                alert("Fehler: Für ein normales 5-Spieler-Spiel müssen ein Geber (setzt aus) und zwei Re-Spieler festgelegt werden.");
                 return;
             }
-        } else { // 5-Spieler-Spiel
-            if (reCount !== 2) {
-                alert("Fehler: Für ein normales 5-Spieler-Spiel müssen beide 'Re'-Karten verteilt sein.");
+        } else { // 4-Spieler-Spiel
+            if (geberCount !== 1) {
+                alert("Fehler: Für ein normales 4-Spieler-Spiel muss ein Geber festgelegt werden.");
                 return;
+            }
+            if (reCount < 1 || reCount > 2) {
+                alert("Fehler: Für ein normales 4-Spieler-Spiel müssen ein oder zwei Re-Spieler festgelegt werden.");
+                return;
+            }
+            if (reCount === 1) {
+                const rePlayer = players.find(p => p.roles.includes('re'));
+                if (rePlayer.name === geberName) {
+                    alert("Fehler: Bei nur einer 'Re'-Karte muss diese einem Nicht-Geber zugewiesen werden. Der Geber wird automatisch zum zweiten 'Re'-Spieler.");
+                    return;
+                }
             }
         }
     }
 
-    // --- DATENKORREKTUR für alle Sonderfälle ---
     let finalGeberName = geberName;
-
     if (geberCount === 0 && (isSoloGame || isHochzeitGame)) {
         const specialPlayer = isSoloGame 
-            ? players.find(p => p.selectedRole === 'solo')
-            : players.find(p => p.selectedRole === 'hochzeit');
+            ? players.find(p => p.roles.includes('solo'))
+            : players.find(p => p.roles.includes('hochzeit'));
         if (specialPlayer) {
             finalGeberName = specialPlayer.name;
             gameInputs.geberName = finalGeberName;
-        }
-    }
-    else if (playerCount === 4 && !isSoloGame && !isHochzeitGame) {
-        if (players.filter(p => p.selectedRole === 're').length === 1) {
-            const geberPlayer = gameInputs.players.find(p => p.selectedRole === 'geber');
-            if (geberPlayer) {
-                geberPlayer.selectedRole = 're';
+            if (!specialPlayer.roles.includes('geber')) {
+                specialPlayer.roles.push('geber');
             }
         }
     }
-
-    // --- Verarbeitung ---
+    
     const namesFromForm = players.map(p => p.name);
     state.updateCurrentPlayerNamesOrder(namesFromForm);
     state.addOrUpdateGame(gameInputs);
@@ -192,10 +191,18 @@ function handleFormSubmit(event) {
     resetUIForNextRound(); 
     state.saveSession();
 
-    alert("Spielrunde erfasst! Die Geber-Karte wurde zum nächsten Spieler verschoben.");
+    if (state.getGameState().editingGameIndex !== -1) {
+        state.setEditingGameIndex(-1);
+        ui.setSubmitButtonMode('new');
+        alert("Änderungen gespeichert!");
+    } else {
+        alert("Spielrunde erfasst! Die Geber-Karte wurde zum nächsten Spieler verschoben.");
+    }
 }
 
-// ... (Restliche Handler und DOMContentLoaded-Listener bleiben unverändert) ...
+/**
+ * Handler für das Ändern der Spieleranzahl.
+ */
 function handlePlayerCountChange(event) {
     const newCount = parseInt(event.target.value);
     state.updateSettings({ playerCount: newCount });
@@ -206,12 +213,20 @@ function handlePlayerCountChange(event) {
     initializeDragAndDrop();
     refreshUI();
 }
+
+/**
+ * Handler für die Eingabe von Spielernamen.
+ */
 function handlePlayerNameInput(event) {
     const index = parseInt(event.target.dataset.index);
     const newName = event.target.value;
     const { playerCount } = state.getGameState().appSettings;
     state.updatePlayerName(index, newName, playerCount);
 }
+
+/**
+ * Handler für das Starten eines neuen Spieltags.
+ */
 function handleNewGameDay() {
     const confirmed = confirm("Möchten Sie wirklich alle Daten löschen und einen neuen Spieltag beginnen?\nDieser Vorgang kann nicht rückgängig gemacht werden.");
     if (confirmed) {
@@ -219,9 +234,24 @@ function handleNewGameDay() {
         location.reload();
     }
 }
+
+/**
+ * Handler für das Bearbeiten eines Spiels.
+ */
 function handleEditGame(event) {
-    ui.populateFormForEdit(event.detail.gameIndex);
+    const gameIndex = event.detail.gameIndex;
+    const { allGamesData } = state.getGameState();
+    if (gameIndex >= 0 && gameIndex < allGamesData.length) {
+        state.setEditingGameIndex(gameIndex);
+        ui.populateFormForEdit(allGamesData[gameIndex]);
+        ui.setSubmitButtonMode('edit');
+        window.scrollTo(0, 0);
+    }
 }
+
+/**
+ * Handler für das Ändern der Abrechnungseinstellungen.
+ */
 function handleSettingsChange() {
     state.updateSettings({
         startgeld: ui.DOM.startgeldInput.value,
@@ -230,6 +260,10 @@ function handleSettingsChange() {
     refreshUI();
     state.saveSession();
 }
+
+/**
+ * Initialisiert die Anwendung nach dem Laden der Seite.
+ */
 document.addEventListener('DOMContentLoaded', () => {
     ui.displayCurrentDate();
     ui.DOM.playerForm.addEventListener('submit', handleFormSubmit);
@@ -253,15 +287,21 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('editGame', handleEditGame);
     ui.DOM.startgeldInput.addEventListener('input', handleSettingsChange);
     ui.DOM.punktwertInput.addEventListener('input', handleSettingsChange);
+    
     const sessionLoaded = state.loadSession();
     let { appSettings, currentPlayerNamesOrder } = state.getGameState();
     document.getElementById(`players${appSettings.playerCount}`).checked = true;
     ui.updateSettingsInputs(appSettings);
-    while(currentPlayerNamesOrder.length < appSettings.playerCount) currentPlayerNamesOrder.push('');
+    
+    while(currentPlayerNamesOrder.length < appSettings.playerCount) {
+        currentPlayerNamesOrder.push('');
+    }
     currentPlayerNamesOrder = currentPlayerNamesOrder.slice(0, appSettings.playerCount);
     state.updateCurrentPlayerNamesOrder(currentPlayerNamesOrder);
+    
     ui.createPlayerTiles(appSettings.playerCount, currentPlayerNamesOrder);
     initializeDragAndDrop();
+    
     if (sessionLoaded) {
         refreshUI();
     }

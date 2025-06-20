@@ -75,35 +75,6 @@ h2 {
 .abrechnung-section div {
     margin-bottom: 10px;
 }
-.game-value-radios {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    margin-top: 10px;
-    justify-content: flex-start;
-    align-items: center;
-}
-.game-value-radios div { display: flex; align-items: center; }
-.game-value-radios input[type="radio"] { margin-right: 5px; }
-.game-value-radios label { font-weight: normal; margin-right: 0; }
-.bock-trigger-section { margin-top: 15px; padding-top: 10px; border-top: 1px solid #e0e0e0; }
-.bock-trigger-section h4 { margin-bottom: 8px; }
-.bock-trigger-section div { display: flex; align-items: center; }
-.bock-trigger-section input[type="checkbox"] { margin-right: 8px; }
-.bock-trigger-section label { font-weight: normal; }
-.game-value-input { margin-top: 15px; display: flex; align-items: center; gap: 10px; }
-.game-value-input input[type="number"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 80px; }
-.players-and-roles-container { background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin-bottom: 20px; overflow-x: auto; }
-.player-role-row { display: flex; flex-wrap: nowrap; gap: 20px; padding-bottom: 10px; }
-.player-column { flex: 0 0 180px; min-width: 180px; border-right: 1px solid #eee; padding-right: 20px; box-sizing: border-box; }
-.player-column:last-child { border-right: none; }
-.player-column label { display: block; margin-bottom: 5px; font-weight: bold; }
-.player-column input[type="text"] { width: calc(100% - 22px); padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; margin-bottom: 15px; }
-.role-radio-group { margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; }
-.role-radio-group h4 { margin-top: 0; margin-bottom: 8px; font-size: 0.9em; color: #555; }
-.role-radio-group .radio-option { display: flex; align-items: center; margin-bottom: 5px; }
-.role-radio-group input[type="radio"] { margin-right: 5px; }
-.role-radio-group label { font-weight: normal; cursor: pointer; margin-bottom: 0; }
 button#submitGameButton {
     display: block; width: 100%; padding: 12px 20px; background-color: #007bff;
     color: white; border: none; border-radius: 5px; font-size: 18px;
@@ -129,71 +100,21 @@ button.edit-btn:hover { background-color: #e0a800; }
 .bock-trigger-round {
     background-color: #ffebee !important;
 }
+.negative-score { color: #dc3545; }
 #errorMessage { color: red; margin-top: 15px; font-weight: bold; display: none; }
 .output-section, .abrechnung-section {
     overflow-x: auto;
 }
 
-
-/* --- Responsive Design für Mobilgeräte --- */
 @media (max-width: 768px) {
-    body {
-        margin: 10px;
-    }
-
-    .container {
-        padding: 15px;
-    }
-
-    h1 {
-        font-size: 1.8em;
-    }
-
-    h2 {
-        font-size: 1.4em;
-    }
-
-    #newGameDayButton {
-        width: 100%;
-        box-sizing: border-box;
-    }
-
-    .player-column input[type="text"], 
-    .game-value-input input[type="number"], 
-    .abrechnung-section input[type="number"] {
-        width: 100%;
-        box-sizing: border-box;
-    }
-
-    .game-value-radios {
-        gap: 10px;
-    }
-
-    .player-role-row {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 25px;
-    }
-
-    .player-column {
-        border-right: none;
-        padding-right: 0;
-        border-bottom: 1px solid #eee;
-        padding-bottom: 15px;
-    }
-
-    .player-column:last-child {
-        border-bottom: none;
-    }
-
-    #currentDate {
-        position: static;
-        text-align: center;
-        margin-bottom: 15px;
-    }
+    body { margin: 10px; }
+    .container { padding: 15px; }
+    h1 { font-size: 1.8em; }
+    h2 { font-size: 1.4em; }
+    #newGameDayButton { width: 100%; box-sizing: border-box; }
+    .abrechnung-section input[type="number"] { width: 100%; box-sizing: border-box; }
+    #currentDate { position: static; text-align: center; margin-bottom: 15px; }
 }
-
-/* --- NEUE UI-Elemente für Drag-and-Drop --- */
 
 .new-input-container {
     display: flex;
@@ -205,7 +126,6 @@ button.edit-btn:hover { background-color: #e0a800; }
     border-radius: 5px;
     background-color: #f9f9f9;
 }
-
 .new-input-container h3 {
     margin-top: 0;
     margin-bottom: 15px;
@@ -213,14 +133,11 @@ button.edit-btn:hover { background-color: #e0a800; }
     border-bottom: 1px solid #eee;
     padding-bottom: 8px;
 }
-
 .new-input-container h3 small {
     font-weight: normal;
     color: #777;
     font-size: 0.8em;
 }
-
-/* 1. Rollen-Pool */
 .role-pool {
     display: flex;
     flex-wrap: wrap;
@@ -232,7 +149,6 @@ button.edit-btn:hover { background-color: #e0a800; }
     padding: 15px;
     border-radius: 5px;
 }
-
 .role-card {
     padding: 10px 20px;
     border-radius: 5px;
@@ -243,20 +159,25 @@ button.edit-btn:hover { background-color: #e0a800; }
     cursor: grab;
     transition: all 0.2s ease-in-out;
 }
-
 .role-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
-
-/* 2. Spieler-Kacheln (Drop-Zonen) */
 .player-dropzones {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 20px;
     justify-content: center;
 }
-
+.player-dropzone {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
 .player-name-input {
     width: 100%;
     border: none;
@@ -271,22 +192,22 @@ button.edit-btn:hover { background-color: #e0a800; }
     outline: none;
     border-bottom-color: #007bff;
 }
-
 .role-slot {
     width: 100%;
-    min-height: 45px; /* Höhe einer role-card */
+    min-height: 45px;
     background-color: #f8f9fa;
     border-radius: 5px;
     border: 1px dashed #ccc;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 5px;
     color: #aaa;
     font-style: italic;
     font-size: 0.9em;
 }
-
-/* NEU: Stile für die Spieler-Statistiken in der Kachel */
 .player-stats {
     width: 100%;
     margin-top: 10px;
@@ -297,36 +218,28 @@ button.edit-btn:hover { background-color: #e0a800; }
     gap: 8px;
     font-size: 0.95em;
 }
-
 .stat-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
-
 .stat-item .label {
     color: #555;
     font-weight: bold;
 }
-
 .stat-item .value {
     font-weight: bold;
     padding: 3px 8px;
     border-radius: 4px;
 }
-
 .stat-item .value.positive {
     background-color: #d4edda;
     color: #155724;
 }
-
 .stat-item .value.negative {
     background-color: #f8d7da;
     color: #721c24;
 }
-
-
-/* 3. Spiel-Steuerung */
 .game-controls {
     display: flex;
     justify-content: space-around;
@@ -337,40 +250,33 @@ button.edit-btn:hover { background-color: #e0a800; }
     padding: 15px;
     border-radius: 5px;
 }
-
 .control-item {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 8px;
 }
-
 .control-item label {
     font-weight: bold;
     font-size: 1em;
 }
-
 .control-item select {
     padding: 8px;
     border-radius: 4px;
     border: 1px solid #ccc;
     font-size: 1.1em;
 }
-
-/* Schöner Schiebeschalter (Toggle Switch) */
 .toggle-switch {
     position: relative;
     display: inline-block;
     width: 60px;
     height: 34px;
 }
-
 .toggle-switch-checkbox {
     opacity: 0;
     width: 0;
     height: 0;
 }
-
 .toggle-switch-label {
     position: absolute;
     cursor: pointer;
@@ -382,7 +288,6 @@ button.edit-btn:hover { background-color: #e0a800; }
     transition: .4s;
     border-radius: 34px;
 }
-
 .toggle-switch-label:before {
     position: absolute;
     content: "";
@@ -394,11 +299,9 @@ button.edit-btn:hover { background-color: #e0a800; }
     transition: .4s;
     border-radius: 50%;
 }
-
 .toggle-switch-checkbox:checked + .toggle-switch-label {
-    background-color: #28a745; /* Grün für "An" */
+    background-color: #28a745;
 }
-
 .toggle-switch-checkbox:checked + .toggle-switch-label:before {
     transform: translateX(26px);
 }
